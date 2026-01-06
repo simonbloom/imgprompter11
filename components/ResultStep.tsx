@@ -27,7 +27,7 @@ const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string }> = {
   },
   nano_banana: {
     label: "Nano Banana",
-    tip: "Use structured prompts: Subject + Action + Location + Composition + Lighting + Style. Excellent for text rendering.",
+    tip: "Camera-first format: Start with angle + shot type + perspective (e.g., 'low-angle medium shot, 3/4 view, f/2.8'), then subject position, spatial setting, lighting, style. Excels at precise compositions.",
   },
   seedream: {
     label: "Seedream",

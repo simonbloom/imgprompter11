@@ -19,7 +19,7 @@ Use EXACTLY this format with the platform labels:
 MIDJOURNEY: [concise comma-separated phrases, ~50 words, no sentences]
 CHATGPT: [structured paragraph: scene/atmosphere, then visual style, then technical details, ~60 words]
 FLUX: [subject-first format: style + context, 30-80 words, describe only what you want]
-NANO_BANANA: [detailed format: composition, lighting, style, atmosphere, ~70 words]
+NANO_BANANA: [camera-first format: start with camera angle + shot type + perspective (e.g., "eye-level medium shot, 3/4 view, shallow DOF f/2.8"), then subject positioning with spatial placement (center-left, foreground), then setting with depth context, then lighting + color palette, then style. Be specific about framing and scale. ~80-100 words]
 SEEDREAM: [priority-ordered: most important style elements first, 30-100 words]
 
 RULES:
