@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, RotateCcw, Sparkles } from "lucide-react";
+import { Copy, Check, RotateCcw, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -11,12 +11,18 @@ interface ResultStepProps {
   onStartOver: () => void;
 }
 
+function getStylePreview(stylePrompt: string, wordCount: number = 12): string {
+  const words = stylePrompt.split(/\s+/).slice(0, wordCount);
+  return words.join(" ") + (stylePrompt.split(/\s+/).length > wordCount ? "..." : "");
+}
+
 export function ResultStep({
   stylePrompt,
   imageCount,
   onStartOver,
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
+  const [showUsage, setShowUsage] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -28,6 +34,8 @@ export function ResultStep({
       toast.error("Failed to copy");
     }
   };
+
+  const stylePreview = getStylePreview(stylePrompt);
 
   return (
     <div className="space-y-6" role="region" aria-label="Style extraction result">
@@ -83,12 +91,77 @@ export function ResultStep({
         </button>
       </div>
 
-      {/* Usage Hint */}
-      <div className="p-3 bg-[var(--bg-secondary)] border-l-2 border-[var(--accent-ai)]" role="note">
-        <p className="text-sm text-[var(--text-secondary)]">
-          Use this prompt with AI image generators like Midjourney, DALL-E, or
-          Stable Diffusion to create new images in this style.
-        </p>
+      {/* How to Use - Collapsible */}
+      <div className="border border-[var(--border-color)]">
+        <button
+          onClick={() => setShowUsage(!showUsage)}
+          aria-expanded={showUsage}
+          aria-controls="usage-instructions"
+          className={cn(
+            "w-full px-4 py-3 flex items-center justify-between",
+            "text-sm font-medium text-[var(--text-primary)]",
+            "hover:bg-[var(--bg-secondary)] transition-colors",
+            "focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--accent-ai)]"
+          )}
+        >
+          <span>How to Use This Prompt</span>
+          {showUsage ? (
+            <ChevronUp aria-hidden="true" className="w-4 h-4" />
+          ) : (
+            <ChevronDown aria-hidden="true" className="w-4 h-4" />
+          )}
+        </button>
+
+        {showUsage && (
+          <div
+            id="usage-instructions"
+            className="px-4 pb-4 space-y-4 border-t border-[var(--border-color)]"
+          >
+            {/* Template */}
+            <div className="pt-4">
+              <p className="mono-label mb-2">Template</p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Copy this pattern and replace <code className="px-1 py-0.5 bg-[var(--bg-secondary)] text-[var(--accent-ai)]">[YOUR SUBJECT]</code>:
+              </p>
+              <div className="mt-2 p-3 bg-[var(--bg-secondary)] text-sm font-mono">
+                &quot;[YOUR SUBJECT], rendered in [paste style prompt]&quot;
+              </div>
+            </div>
+
+            {/* Example */}
+            <div>
+              <p className="mono-label mb-2">Example</p>
+              <div className="p-3 bg-[var(--bg-secondary)] text-sm">
+                <span className="text-[var(--accent-ai)]">&quot;A cat sitting on a windowsill&quot;</span>
+                <span className="text-[var(--text-muted)]">, rendered in </span>
+                <span className="text-[var(--text-secondary)]">{stylePreview}</span>
+              </div>
+            </div>
+
+            {/* Platform Tips */}
+            <div>
+              <p className="mono-label mb-2">Platform Tips</p>
+              <ul className="space-y-1.5 text-sm text-[var(--text-secondary)]">
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">Midjourney:</span>{" "}
+                  Add <code className="px-1 py-0.5 bg-[var(--bg-secondary)]">--style raw</code> for closer style match
+                </li>
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">DALL-E:</span>{" "}
+                  Works directly, be specific with your subject description
+                </li>
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">Gemini:</span>{" "}
+                  Describe your subject first, then paste the style
+                </li>
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">Stable Diffusion:</span>{" "}
+                  Use as positive prompt, add subject at the beginning
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
