@@ -4,22 +4,19 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
-import { AnalyzingStep } from "./AnalyzingStep";
 import { ResultStep } from "./ResultStep";
 import { uploadMultipleImages } from "@/utils/uploadImage";
 import { postStyleExtraction, type PlatformPrompts } from "@/utils/styleExtractionClient";
 
-type WizardStep = "upload" | "analyzing" | "result";
-
 const STORAGE_KEY = "imgprompter_replicate_api_key";
 
 export function StyleExtractorWizard() {
-  const [step, setStep] = useState<WizardStep>("upload");
   const [apiKey, setApiKey] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [userGuidance, setUserGuidance] = useState("");
   const [prompts, setPrompts] = useState<PlatformPrompts | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   // Load API key from localStorage on mount
   useEffect(() => {
@@ -42,7 +39,7 @@ export function StyleExtractorWizard() {
       return;
     }
 
-    setStep("analyzing");
+    setIsExtracting(true);
     setError(null);
 
     try {
@@ -65,29 +62,18 @@ export function StyleExtractorWizard() {
       }
 
       setPrompts(extractResult.prompts);
-      setStep("result");
       toast.success("Style extracted successfully!");
     } catch (err) {
       console.error("[StyleExtractorWizard] Error:", err);
       const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
       toast.error(message);
-      setStep("upload");
+    } finally {
+      setIsExtracting(false);
     }
   };
 
-  const handleStartOver = () => {
-    // Clean up image previews
-    images.forEach((img) => URL.revokeObjectURL(img.preview));
-
-    setStep("upload");
-    setImages([]);
-    setUserGuidance("");
-    setPrompts(null);
-    setError(null);
-  };
-
-  const isNextDisabled = images.length === 0 || !apiKey;
+  const isNextDisabled = images.length === 0 || !apiKey || isExtracting;
 
   return (
     <div className="space-y-8">
@@ -97,34 +83,33 @@ export function StyleExtractorWizard() {
       {/* Divider */}
       <div className="border-t border-[var(--border-color)]" />
 
-      {/* Step Content */}
-      {step === "upload" && (
-        <UploadStep
-          images={images}
-          onImagesChange={setImages}
-          userGuidance={userGuidance}
-          onUserGuidanceChange={setUserGuidance}
-          onNext={handleExtract}
-          isNextDisabled={isNextDisabled}
-          apiKey={apiKey}
-        />
-      )}
-
-      {step === "analyzing" && <AnalyzingStep imageCount={images.length} />}
-
-      {step === "result" && prompts && (
-        <ResultStep
-          prompts={prompts}
-          imageCount={images.length}
-          onStartOver={handleStartOver}
-        />
-      )}
+      {/* Upload Section - Always visible */}
+      <UploadStep
+        images={images}
+        onImagesChange={setImages}
+        userGuidance={userGuidance}
+        onUserGuidanceChange={setUserGuidance}
+        onNext={handleExtract}
+        isNextDisabled={isNextDisabled}
+        apiKey={apiKey}
+        isExtracting={isExtracting}
+        hasResults={!!prompts}
+      />
 
       {/* Error Display */}
-      {error && step === "upload" && (
+      {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm">
           {error}
         </div>
+      )}
+
+      {/* Results Section - Shown when prompts exist */}
+      {prompts && (
+        <ResultStep
+          prompts={prompts}
+          imageCount={images.length}
+          apiKey={apiKey}
+        />
       )}
     </div>
   );

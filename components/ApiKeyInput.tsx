@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Key, ExternalLink, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,11 @@ interface ApiKeyInputProps {
 export function ApiKeyInput({ apiKey, onApiKeyChange }: ApiKeyInputProps) {
   const [showKey, setShowKey] = useState(false);
   const [inputValue, setInputValue] = useState(apiKey);
+
+  // Sync inputValue when apiKey prop changes (e.g., loaded from localStorage)
+  useEffect(() => {
+    setInputValue(apiKey);
+  }, [apiKey]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

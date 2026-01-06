@@ -5,7 +5,6 @@ export interface StyleExtractionRequest {
 }
 
 export interface PlatformPrompts {
-  midjourney: string;
   chatgpt: string;
   flux: string;
   nano_banana: string;

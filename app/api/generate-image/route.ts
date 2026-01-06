@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const replicate = new Replicate({ auth: apiKey });
-    const modelId = MODEL_MAP[platform as SupportedPlatform];
+    const modelId = MODEL_MAP[platform as SupportedPlatform] as `${string}/${string}`;
     const input = getModelInput(platform as SupportedPlatform, prompt.trim());
 
     const output = await replicate.run(modelId, { input });

@@ -13,10 +13,9 @@ ANALYZE THESE STYLE ELEMENTS:
 6. Distinctive visual elements (e.g., bokeh, film grain, vintage look, minimalist, glitch effects)
 
 OUTPUT FORMAT:
-Output the style as 5 platform-optimized prompts. Each prompt must capture the SAME style but formatted optimally for that platform.
+Output the style as 4 platform-optimized prompts. Each prompt must capture the SAME style but formatted optimally for that platform.
 Use EXACTLY this format with the platform labels:
 
-MIDJOURNEY: [concise comma-separated phrases, ~50 words, no sentences]
 CHATGPT: [structured paragraph: scene/atmosphere, then visual style, then technical details, ~60 words]
 FLUX: [subject-first format: style + context, 30-80 words, describe only what you want]
 NANO_BANANA: [camera-first format: start with camera angle + shot type + perspective (e.g., "eye-level medium shot, 3/4 view, shallow DOF f/2.8"), then subject positioning with spatial placement (center-left, foreground), then setting with depth context, then lighting + color palette, then style. Be specific about framing and scale. ~80-100 words]
@@ -32,11 +31,11 @@ function buildUserPrompt(imageCount: number, userGuidance?: string): string {
   if (imageCount === 1) {
     return `Analyze this image and extract its visual style characteristics.
 ${userGuidance ? `\nUser notes: "${userGuidance}"\nPay special attention to the aspects the user mentioned while maintaining focus on style over content.\n` : ""}
-Output 5 platform-optimized prompts as specified in the format above.`;
+Output 4 platform-optimized prompts as specified in the format above.`;
   } else {
     return `Analyze these ${imageCount} images and extract their COMMON style characteristics.
 ${userGuidance ? `\nUser notes: "${userGuidance}"\nPay special attention to the aspects the user mentioned.\n` : ""}
-Focus on style patterns that appear across multiple images. Output 5 platform-optimized prompts as specified in the format above.`;
+Focus on style patterns that appear across multiple images. Output 4 platform-optimized prompts as specified in the format above.`;
   }
 }
 
@@ -46,10 +45,9 @@ export interface StyleExtractionRequest {
   apiKey: string;
 }
 
-export type PlatformKey = "midjourney" | "chatgpt" | "flux" | "nano_banana" | "seedream";
+export type PlatformKey = "chatgpt" | "flux" | "nano_banana" | "seedream";
 
 export interface PlatformPrompts {
-  midjourney: string;
   chatgpt: string;
   flux: string;
   nano_banana: string;
@@ -63,20 +61,74 @@ export interface StyleExtractionResponse {
 }
 
 function parsePlatformPrompts(rawOutput: string): PlatformPrompts | null {
-  const platforms: PlatformKey[] = ["midjourney", "chatgpt", "flux", "nano_banana", "seedream"];
-  const result: Partial<PlatformPrompts> = {};
+  const platformLabels: Record<PlatformKey, string[]> = {
+    chatgpt: ["CHATGPT:", "**CHATGPT:**", "ChatGPT:", "CHATGPT :", "ChatGPT :"],
+    flux: ["FLUX:", "**FLUX:**", "Flux:"],
+    nano_banana: ["NANO_BANANA:", "**NANO_BANANA:**", "Nano Banana:", "NANO BANANA:"],
+    seedream: ["SEEDREAM:", "**SEEDREAM:**", "Seedream:", "SEEDREAM :"],
+  };
 
-  for (let i = 0; i < platforms.length; i++) {
-    const platform = platforms[i];
-    const label = platform.toUpperCase().replace("_", "_");
-    const regex = new RegExp(`${label}:\\s*(.+?)(?=(?:MIDJOURNEY:|CHATGPT:|FLUX:|NANO_BANANA:|SEEDREAM:|$))`, "is");
-    const match = rawOutput.match(regex);
-    if (match && match[1]) {
-      result[platform] = match[1].trim();
+  const result: Partial<PlatformPrompts> = {};
+  const platforms: PlatformKey[] = ["chatgpt", "flux", "nano_banana", "seedream"];
+
+  // Find all label positions
+  const labelPositions: { platform: PlatformKey; position: number }[] = [];
+  
+  for (const platform of platforms) {
+    const labels = platformLabels[platform];
+    for (const label of labels) {
+      const pos = rawOutput.indexOf(label);
+      if (pos !== -1) {
+        labelPositions.push({ platform, position: pos });
+        break;
+      }
     }
   }
 
-  if (Object.keys(result).length === 5) {
+  // Sort by position
+  labelPositions.sort((a, b) => a.position - b.position);
+
+  // Extract content between labels
+  for (let i = 0; i < labelPositions.length; i++) {
+    const current = labelPositions[i];
+    const nextPosition = i + 1 < labelPositions.length 
+      ? labelPositions[i + 1].position 
+      : rawOutput.length;
+
+    // Find the label that was matched
+    const labels = platformLabels[current.platform];
+    let labelEnd = current.position;
+    for (const label of labels) {
+      if (rawOutput.indexOf(label) === current.position) {
+        labelEnd = current.position + label.length;
+        break;
+      }
+    }
+
+    const content = rawOutput.slice(labelEnd, nextPosition).trim();
+    if (content) {
+      result[current.platform] = content;
+    }
+  }
+
+  // Log for debugging if parsing fails
+  if (Object.keys(result).length !== 4) {
+    console.error("[parsePlatformPrompts] Failed to parse all platforms. Found:", Object.keys(result));
+    console.error("[parsePlatformPrompts] Raw output:", rawOutput.slice(0, 500));
+  }
+
+  if (Object.keys(result).length === 4) {
+    return result as PlatformPrompts;
+  }
+
+  // Fallback: if we got at least one prompt, fill missing ones with a generic message
+  if (Object.keys(result).length > 0) {
+    const firstFound = Object.values(result)[0];
+    for (const platform of platforms) {
+      if (!result[platform]) {
+        result[platform] = firstFound || "Style extraction incomplete. Please try again.";
+      }
+    }
     return result as PlatformPrompts;
   }
 

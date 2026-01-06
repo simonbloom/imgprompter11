@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, ImageIcon, AlertCircle } from "lucide-react";
+import { Upload, X, ImageIcon, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UploadedImage {
@@ -18,6 +18,8 @@ interface UploadStepProps {
   onNext: () => void;
   isNextDisabled: boolean;
   apiKey: string;
+  isExtracting?: boolean;
+  hasResults?: boolean;
 }
 
 const MAX_IMAGES = 5;
@@ -32,6 +34,8 @@ export function UploadStep({
   onNext,
   isNextDisabled,
   apiKey,
+  isExtracting = false,
+  hasResults = false,
 }: UploadStepProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -269,16 +273,26 @@ export function UploadStep({
           className={cn(
             "px-6 py-2 text-sm font-medium transition-colors",
             "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
+            "flex items-center gap-2",
             isNextDisabled
               ? "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
               : "bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)]"
           )}
         >
-          {!apiKey
-            ? "Enter API Key First"
-            : images.length === 0
-              ? "Add Images First"
-              : "Extract Style →"}
+          {isExtracting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Extracting...
+            </>
+          ) : !apiKey ? (
+            "Enter API Key First"
+          ) : images.length === 0 ? (
+            "Add Images First"
+          ) : hasResults ? (
+            "Re-extract Style →"
+          ) : (
+            "Extract Style →"
+          )}
         </button>
       </div>
     </div>
