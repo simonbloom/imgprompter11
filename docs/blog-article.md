@@ -22,9 +22,28 @@ That conversation produced **5 planning documents** totaling over 2,100 lines:
 | **03 - AI Prompts.md** | The exact system prompts and user prompts for Claude to extract styles, with expected output formats |
 | **04 - Implementation Code.md** | Production-ready code snippets for services, API routes, utilities, and React components |
 
-**These 5 documents were fed into the first prompt when creating the Linear tickets.** The agent read all of them, understood the full picture, and generated 25 detailed tickets with acceptance criteria, code examples, and proper dependencies.
+### The Prompt That Created 25 Tickets
 
-This is the "magic" that made 70 minutes possible - the upfront thinking was already done.
+With those 5 documents ready, I fed them all into a single prompt:
+
+```
+[5 file paths] These files outline the project that I want to create. 
+Please go through them and create linear tickets for the entire project. 
+I'm going to be using Linear to manage what I'm doing. 
+Please set up a new project inside Linear called "ImgPrompter11". 
+I want you to be fastidious in your approach of creating the tickets.
+```
+
+The agent read all 2,100+ lines, understood the full picture, and generated 25 detailed tickets with acceptance criteria, code examples, and proper dependencies.
+
+I then asked for a quality check:
+
+```
+Can you do one last review of the tickets produced and see if your 
+boss would be happy with that?
+```
+
+This is the "magic" that made 70 minutes possible - the upfront thinking was already done, and it was captured in documents that the agent could consume in seconds.
 
 ---
 
