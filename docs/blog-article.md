@@ -6,7 +6,11 @@
 
 ## The 45-Minute Planning Session
 
-Before writing a single line of code, I spent 45 minutes talking to Droid about what I wanted to build. I already knew the tech stack (I use it all the time), but I needed to articulate the product vision, user flow, and implementation details.
+Before writing a single line of code, I spent 45 minutes talking to Droid about what I wanted to build. 
+
+**This wasn't rocket science.** It was just a conversation - me explaining the app I had in mind, answering questions, and thinking out loud. I already knew the tech stack (I use it all the time), and I had a very clear idea of how simple I wanted the UX to be: upload images, get a style prompt, copy it. That's it.
+
+The agent asked clarifying questions, I gave answers, and it synthesized everything into structured documents. No special prompting techniques. No frameworks. Just talking about what I wanted to build like I would with a colleague.
 
 That conversation produced **5 planning documents** totaling over 2,100 lines:
 
@@ -272,4 +276,4 @@ The future of software development isn't about writing less code. It's about **d
 
 *Built with [Factory AI](https://factory.ai) (Droid) + [Linear](https://linear.app) + [Vercel](https://vercel.com)*
 
-*Repository: [github.com/simonbloom/imgprompter11](https://github.com/simonbloom/imgprompter11)*
+
