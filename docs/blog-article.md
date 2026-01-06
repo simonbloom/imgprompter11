@@ -43,6 +43,14 @@ Can you do one last review of the tickets produced and see if your
 boss would be happy with that?
 ```
 
+After reviewing the changes, I pushed back for another iteration:
+
+```
+Now you've made these shit ticket changes to Linear. Could you review 
+them and make sure that your boss will be happy with what you've just 
+changed, and that everything makes sense as a group of tickets?
+```
+
 This is the "magic" that made 70 minutes possible - the upfront thinking was already done, and it was captured in documents that the agent could consume in seconds.
 
 ---
