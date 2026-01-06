@@ -73,6 +73,26 @@ The agent spec'd the feature, I approved it, and VOL-85 was implemented and ship
 
 ---
 
+## Stealing Styles from Another Project
+
+Before building, I grabbed the design system from another project with one prompt:
+
+```
+please grab all the styles used in tailwind i want use it as a starter for another product
+```
+
+The agent found my `globals.css`, extracted all the CSS variables, and explained what I was getting:
+
+- **Zero border-radius design** (all `--radius` set to 0)
+- **Monospace typography** throughout
+- **Warm neutral color palette** with gold and indigo accents
+- **24px-based spacing system**
+- **Technical Architect** design aesthetic
+
+This became the foundation for imgPrompter11's visual identity - no design work needed, just reuse.
+
+---
+
 ## Technology Stack
 
 | Layer | Technology |
