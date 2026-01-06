@@ -62,7 +62,7 @@ export async function extractStyleFromImage({
       input: {
         prompt: fullPrompt,
         image: imageUrls[0],
-        max_tokens: 500,
+        max_tokens: 1024,
         temperature: 0.3,
       },
     }) as unknown;
