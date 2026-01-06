@@ -13,9 +13,11 @@ ANALYZE AND DESCRIBE:
 6. Distinctive visual elements (e.g., bokeh, film grain, vintage look, minimalist, maximalist, glitch effects)
 
 OUTPUT REQUIREMENTS:
-- Keep output under 150 words
+- Keep output under 100 words (strict limit)
+- Do NOT include titles, headers, or section labels
 - Use descriptive adjectives and artistic terminology
-- Format as natural, flowing language (NOT bullet points or lists)
+- Format as 1-2 concise paragraphs (NOT bullet points or lists)
+- Avoid repeating descriptive terms
 - Output must be suitable as an AI image generation prompt
 - Focus ONLY on transferable style characteristics`;
 
