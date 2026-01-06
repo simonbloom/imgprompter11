@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, RotateCcw, Sparkles, X } from "lucide-react";
+import { Copy, Check, RotateCcw, Sparkles, X, Loader2, Download, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
+import { generateImage, type GeneratePlatform } from "@/utils/generateImageClient";
 
 interface ResultStepProps {
   prompts: PlatformPrompts;
   imageCount: number;
   onStartOver: () => void;
+  apiKey: string;
 }
+
+const REPLICATE_SUPPORTED_PLATFORMS: PlatformKey[] = ["flux", "nano_banana", "seedream"];
 
 const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string }> = {
   midjourney: {
@@ -42,9 +46,12 @@ export function ResultStep({
   prompts,
   imageCount,
   onStartOver,
+  apiKey,
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -75,6 +82,56 @@ export function ResultStep({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy");
+    }
+  };
+
+  const canGenerate = REPLICATE_SUPPORTED_PLATFORMS.includes(selectedPlatform);
+  const hasSubject = subject.trim().length > 0;
+
+  const handleGenerate = async () => {
+    if (!canGenerate || !hasSubject || isGenerating) return;
+
+    setIsGenerating(true);
+    setGeneratedImageUrl(null);
+
+    try {
+      const result = await generateImage({
+        prompt: displayPrompt,
+        platform: selectedPlatform as GeneratePlatform,
+        apiKey,
+      });
+
+      if (result.success && result.imageUrl) {
+        setGeneratedImageUrl(result.imageUrl);
+        toast.success("Image generated successfully!");
+      } else {
+        toast.error(result.error || "Failed to generate image");
+      }
+    } catch (error) {
+      console.error("Generation error:", error);
+      toast.error("Failed to generate image. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!generatedImageUrl) return;
+
+    try {
+      const response = await fetch(generatedImageUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `generated-${selectedPlatform}-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Image downloaded!");
+    } catch {
+      toast.error("Failed to download image");
     }
   };
 
@@ -179,7 +236,7 @@ export function ResultStep({
             {displayPrompt}
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center gap-3">
             <button
               onClick={handleCopy}
               aria-label={copied ? "Copied to clipboard" : `Copy ${currentConfig.label} prompt to clipboard`}
@@ -203,7 +260,49 @@ export function ResultStep({
                 </>
               )}
             </button>
+
+            {canGenerate && (
+              <button
+                onClick={handleGenerate}
+                disabled={!hasSubject || isGenerating}
+                aria-label={
+                  !hasSubject
+                    ? "Add a subject to generate an image"
+                    : isGenerating
+                    ? "Generating image..."
+                    : `Generate image with ${currentConfig.label}`
+                }
+                title={!hasSubject ? "Add a subject to generate" : undefined}
+                className={cn(
+                  "px-4 py-2",
+                  "flex items-center gap-2 text-sm",
+                  "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
+                  "transition-colors",
+                  hasSubject && !isGenerating
+                    ? "bg-[var(--accent-ai)] text-white hover:opacity-90"
+                    : "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
+                )}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles aria-hidden="true" className="w-4 h-4" />
+                    Generate Image
+                  </>
+                )}
+              </button>
+            )}
           </div>
+
+          {canGenerate && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              💰 Generating costs ~$0.02-0.04 per image (charged to your Replicate account)
+            </p>
+          )}
         </div>
 
         {/* Platform Tip */}
@@ -214,6 +313,69 @@ export function ResultStep({
           </div>
         </div>
       </div>
+
+      {/* Generated Image Display */}
+      {(isGenerating || generatedImageUrl) && (
+        <div className="border border-[var(--border-color)] p-4">
+          <h3 className="text-sm font-medium mb-4">Generated Image</h3>
+
+          {isGenerating && !generatedImageUrl && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-ai)] mb-4" />
+              <p className="text-sm text-[var(--text-secondary)]">
+                Generating with {currentConfig.label}...
+              </p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                This may take 5-15 seconds
+              </p>
+            </div>
+          )}
+
+          {generatedImageUrl && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <img
+                  src={generatedImageUrl}
+                  alt={`Generated image using ${currentConfig.label}`}
+                  className="max-w-full max-h-[500px] object-contain border border-[var(--border-color)]"
+                />
+              </div>
+
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={handleDownload}
+                  className={cn(
+                    "px-4 py-2",
+                    "border border-[var(--border-color)] bg-[var(--bg-primary)]",
+                    "hover:bg-[var(--bg-secondary)] transition-colors",
+                    "flex items-center gap-2 text-sm",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2"
+                  )}
+                >
+                  <Download aria-hidden="true" className="w-4 h-4" />
+                  Download
+                </button>
+
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className={cn(
+                    "px-4 py-2",
+                    "border border-[var(--border-color)] bg-[var(--bg-primary)]",
+                    "hover:bg-[var(--bg-secondary)] transition-colors",
+                    "flex items-center gap-2 text-sm",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
+                    isGenerating && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <RefreshCw aria-hidden="true" className={cn("w-4 h-4", isGenerating && "animate-spin")} />
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-center pt-4">
