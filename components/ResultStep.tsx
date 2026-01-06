@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, RotateCcw, Sparkles } from "lucide-react";
+import { Copy, Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
@@ -44,6 +44,7 @@ export function ResultStep({
   onStartOver,
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
+  const [subject, setSubject] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -62,9 +63,13 @@ export function ResultStep({
   const currentPrompt = prompts[selectedPlatform];
   const currentConfig = PLATFORM_CONFIG[selectedPlatform];
 
+  const displayPrompt = subject.trim()
+    ? `${subject.trim()}, rendered in ${currentPrompt.charAt(0).toLowerCase()}${currentPrompt.slice(1)}`
+    : currentPrompt;
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(currentPrompt);
+      await navigator.clipboard.writeText(displayPrompt);
       setCopied(true);
       toast.success("Copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
@@ -84,6 +89,46 @@ export function ResultStep({
         <span className="mono-tag" aria-label={`Generated from ${imageCount} image${imageCount !== 1 ? "s" : ""}`}>
           From {imageCount} image{imageCount !== 1 ? "s" : ""}
         </span>
+      </div>
+
+      {/* Subject Input */}
+      <div className="space-y-2">
+        <label
+          htmlFor="subject-input"
+          className="block text-sm text-[var(--text-secondary)]"
+        >
+          Add your subject (optional)
+        </label>
+        <div className="relative">
+          <input
+            id="subject-input"
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder='e.g., "a family doing the weekly shop"'
+            className={cn(
+              "w-full px-4 py-3 pr-10",
+              "bg-[var(--bg-secondary)] border border-[var(--border-color)]",
+              "text-[var(--text-primary)] text-sm",
+              "placeholder:text-[var(--text-muted)]",
+              "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:border-transparent",
+              "transition-colors"
+            )}
+          />
+          {subject && (
+            <button
+              onClick={() => setSubject("")}
+              aria-label="Clear subject"
+              className={cn(
+                "absolute right-3 top-1/2 -translate-y-1/2",
+                "p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                "transition-colors"
+              )}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Platform Tabs */}
@@ -131,7 +176,7 @@ export function ResultStep({
             aria-label={`${currentConfig.label} style prompt`}
             tabIndex={0}
           >
-            {currentPrompt}
+            {displayPrompt}
           </div>
 
           <div className="mt-4 flex items-center justify-between">
