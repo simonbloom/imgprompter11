@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Check, Sparkles, X, Loader2, Download, RefreshCw } from "lucide-react";
+import { Copy, Check, Sparkles, X, Loader2, Download, RefreshCw, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
@@ -48,6 +48,7 @@ export function ResultStep({
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
+  const [editedPrompts, setEditedPrompts] = useState<Partial<Record<PlatformKey, string>>>({});
   const [generatingPlatforms, setGeneratingPlatforms] = useState<Partial<Record<PlatformKey, boolean>>>({});
   const [generatedImages, setGeneratedImages] = useState<Partial<Record<PlatformKey, string>>>({}); 
   const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
@@ -92,9 +93,32 @@ export function ResultStep({
     ? `${subject.trim()}, rendered in ${currentPrompt.charAt(0).toLowerCase()}${currentPrompt.slice(1)}`
     : currentPrompt;
 
+  // Use edited prompt if available, otherwise fall back to computed displayPrompt
+  const effectivePrompt = editedPrompts[selectedPlatform] ?? displayPrompt;
+  const hasEdits = editedPrompts[selectedPlatform] !== undefined;
+
+  // Clear edits when subject changes so new subject is applied
+  const handleSubjectChange = (newSubject: string) => {
+    setSubject(newSubject);
+    setEditedPrompts({});
+  };
+
+  const handlePromptEdit = (value: string) => {
+    setEditedPrompts((prev) => ({ ...prev, [selectedPlatform]: value }));
+  };
+
+  const handleResetPrompt = () => {
+    setEditedPrompts((prev) => {
+      const updated = { ...prev };
+      delete updated[selectedPlatform];
+      return updated;
+    });
+    toast.success("Prompt reset to original");
+  };
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(displayPrompt);
+      await navigator.clipboard.writeText(effectivePrompt);
       setCopied(true);
       toast.success("Copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
@@ -105,9 +129,10 @@ export function ResultStep({
 
   const canGenerate = REPLICATE_SUPPORTED_PLATFORMS.includes(selectedPlatform);
   const hasSubject = subject.trim().length > 0;
+  const canGenerateNow = hasSubject || hasEdits;
 
   const handleGenerate = async () => {
-    if (!canGenerate || !hasSubject || isCurrentPlatformGenerating) return;
+    if (!canGenerate || !canGenerateNow || isCurrentPlatformGenerating) return;
 
     // Capture the platform we're generating for (in case user switches tabs)
     const platformToGenerate = selectedPlatform;
@@ -124,7 +149,7 @@ export function ResultStep({
 
     try {
       const result = await generateImage({
-        prompt: displayPrompt,
+        prompt: effectivePrompt,
         platform: platformToGenerate as GeneratePlatform,
         apiKey,
       });
@@ -203,7 +228,7 @@ export function ResultStep({
             id="subject-input"
             type="text"
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(e) => handleSubjectChange(e.target.value)}
             placeholder='e.g., "a family doing the weekly shop"'
             className={cn(
               "w-full px-4 py-3 pr-10",
@@ -264,19 +289,19 @@ export function ResultStep({
           aria-labelledby={selectedPlatform}
           className="p-4"
         >
-          <div
+          <textarea
+            value={effectivePrompt}
+            onChange={(e) => handlePromptEdit(e.target.value)}
+            aria-label={`${currentConfig.label} style prompt - editable`}
+            rows={6}
             className={cn(
-              "p-4 min-h-[120px]",
+              "w-full p-4 min-h-[120px] resize-y",
               "bg-[var(--bg-primary)] border border-[var(--border-color)]",
-              "text-[var(--text-primary)] text-sm leading-relaxed"
+              "text-[var(--text-primary)] text-sm leading-relaxed",
+              "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:border-transparent",
+              "transition-colors"
             )}
-            role="textbox"
-            aria-readonly="true"
-            aria-label={`${currentConfig.label} style prompt`}
-            tabIndex={0}
-          >
-            {displayPrompt}
-          </div>
+          />
 
           <div className="mt-4 flex items-center gap-3">
             <button
@@ -303,24 +328,41 @@ export function ResultStep({
               )}
             </button>
 
+            {hasEdits && (
+              <button
+                onClick={handleResetPrompt}
+                aria-label="Reset prompt to original"
+                className={cn(
+                  "px-4 py-2",
+                  "border border-[var(--border-color)] bg-[var(--bg-primary)]",
+                  "hover:bg-[var(--bg-secondary)] transition-colors",
+                  "flex items-center gap-2 text-sm",
+                  "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2"
+                )}
+              >
+                <RotateCcw aria-hidden="true" className="w-4 h-4" />
+                Reset
+              </button>
+            )}
+
             {canGenerate && (
               <button
                 onClick={handleGenerate}
-                disabled={!hasSubject || isCurrentPlatformGenerating}
+                disabled={!canGenerateNow || isCurrentPlatformGenerating}
                 aria-label={
-                  !hasSubject
-                    ? "Add a subject to generate an image"
+                  !canGenerateNow
+                    ? "Add a subject or edit the prompt to generate an image"
                     : isCurrentPlatformGenerating
                     ? "Generating image..."
                     : `Generate image with ${currentConfig.label}`
                 }
-                title={!hasSubject ? "Add a subject to generate" : undefined}
+                title={!canGenerateNow ? "Add a subject or edit the prompt to generate" : undefined}
                 className={cn(
                   "px-4 py-2",
                   "flex items-center gap-2 text-sm",
                   "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
                   "transition-colors",
-                  hasSubject && !isCurrentPlatformGenerating
+                  canGenerateNow && !isCurrentPlatformGenerating
                     ? "bg-[var(--accent-ai)] text-white hover:opacity-90"
                     : "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
                 )}
@@ -379,14 +421,14 @@ export function ResultStep({
                   <p className="text-sm text-red-600 mb-2">{currentGenerationError}</p>
                   <button
                     onClick={handleGenerate}
-                    disabled={!hasSubject}
+                    disabled={!canGenerateNow}
                     className={cn(
                       "mt-2 px-4 py-2",
                       "bg-[var(--accent-ai)] text-white",
                       "hover:opacity-90 transition-colors",
                       "flex items-center gap-2 text-sm",
                       "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
-                      !hasSubject && "opacity-50 cursor-not-allowed"
+                      !canGenerateNow && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <RefreshCw aria-hidden="true" className="w-4 h-4" />
@@ -423,14 +465,14 @@ export function ResultStep({
 
                     <button
                       onClick={handleGenerate}
-                      disabled={isCurrentPlatformGenerating || !hasSubject}
+                      disabled={isCurrentPlatformGenerating || !canGenerateNow}
                       className={cn(
                         "px-4 py-2",
                         "border border-[var(--border-color)] bg-[var(--bg-primary)]",
                         "hover:bg-[var(--bg-secondary)] transition-colors",
                         "flex items-center gap-2 text-sm",
                         "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
-                        (isCurrentPlatformGenerating || !hasSubject) && "opacity-50 cursor-not-allowed"
+                        (isCurrentPlatformGenerating || !canGenerateNow) && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <RefreshCw aria-hidden="true" className={cn("w-4 h-4", isCurrentPlatformGenerating && "animate-spin")} />
