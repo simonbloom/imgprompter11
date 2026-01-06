@@ -4,6 +4,26 @@
 
 ---
 
+## The 45-Minute Planning Session
+
+Before writing a single line of code, I spent 45 minutes talking to Droid about what I wanted to build. I already knew the tech stack (I use it all the time), but I needed to articulate the product vision, user flow, and implementation details.
+
+That conversation produced **5 planning documents** totaling over 2,100 lines:
+
+| Document | Purpose |
+|----------|---------|
+| **00 - Overview.md** | Executive summary, problem statement, solution, and document index linking everything together |
+| **01 - UX Journey.md** | Complete user flow with ASCII wireframes, step-by-step breakdown, mobile considerations, and error states |
+| **02 - Tech Stack.md** | Architecture overview, recommended technologies with versions, file structure, API specs, and deployment guide |
+| **03 - AI Prompts.md** | The exact system prompts and user prompts for Claude to extract styles, with expected output formats |
+| **04 - Implementation Code.md** | Production-ready code snippets for services, API routes, utilities, and React components |
+
+**These 5 documents were fed into the first prompt when creating the Linear tickets.** The agent read all of them, understood the full picture, and generated 25 detailed tickets with acceptance criteria, code examples, and proper dependencies.
+
+This is the "magic" that made 70 minutes possible - the upfront thinking was already done.
+
+---
+
 ## What We Built
 
 **imgPrompter11** is an AI-powered tool that extracts style prompts from images. Upload reference images, and Claude 4.5 Sonnet analyzes their visual characteristics to generate prompts you can use with Midjourney, DALL-E, or Stable Diffusion.
