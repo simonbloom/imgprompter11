@@ -4,36 +4,39 @@ const SYSTEM_PROMPT = `You are an expert at analyzing images and extracting thei
 
 When analyzing an image, focus EXCLUSIVELY on style elements, NOT the subject matter or content.
 
-ANALYZE AND DESCRIBE:
-1. Visual style (e.g., photorealistic, watercolor, oil painting, digital art, anime, sketch, 3D render, pixel art)
-2. Color palette and lighting (e.g., warm tones, cool blues, dramatic shadows, soft lighting, high contrast, muted colors)
+ANALYZE THESE STYLE ELEMENTS:
+1. Visual style (e.g., photorealistic, watercolor, oil painting, digital art, anime, sketch, 3D render)
+2. Color palette and lighting (e.g., warm tones, cool blues, dramatic shadows, soft lighting, high contrast)
 3. Composition techniques (e.g., rule of thirds, centered, symmetrical, dynamic angles, negative space)
 4. Mood and atmosphere (e.g., serene, energetic, mysterious, cheerful, dramatic, melancholic)
 5. Artistic techniques (e.g., brush strokes, textures, filters, grain, blur effects, sharp details)
-6. Distinctive visual elements (e.g., bokeh, film grain, vintage look, minimalist, maximalist, glitch effects)
+6. Distinctive visual elements (e.g., bokeh, film grain, vintage look, minimalist, glitch effects)
 
-OUTPUT REQUIREMENTS:
-- Keep output under 100 words (strict limit)
-- Do NOT include titles, headers, or section labels
-- Use descriptive adjectives and artistic terminology
-- Format as 1-2 concise paragraphs (NOT bullet points or lists)
-- Avoid repeating descriptive terms
-- Output must be suitable as an AI image generation prompt
-- Focus ONLY on transferable style characteristics`;
+OUTPUT FORMAT:
+Output the style as 5 platform-optimized prompts. Each prompt must capture the SAME style but formatted optimally for that platform.
+Use EXACTLY this format with the platform labels:
+
+MIDJOURNEY: [concise comma-separated phrases, ~50 words, no sentences]
+CHATGPT: [structured paragraph: scene/atmosphere, then visual style, then technical details, ~60 words]
+FLUX: [subject-first format: style + context, 30-80 words, describe only what you want]
+NANO_BANANA: [detailed format: composition, lighting, style, atmosphere, ~70 words]
+SEEDREAM: [priority-ordered: most important style elements first, 30-100 words]
+
+RULES:
+- Do NOT include titles or headers other than the platform labels
+- Avoid repeating descriptive terms across prompts
+- Focus ONLY on transferable style characteristics, not subject matter
+- Each prompt should be usable directly for image generation`;
 
 function buildUserPrompt(imageCount: number, userGuidance?: string): string {
   if (imageCount === 1) {
-    return `Analyze this image and extract its visual style characteristics into a detailed prompt that could be used to generate new images in the same style.
-
-${userGuidance ? `User notes: "${userGuidance}"\n\nPay special attention to the aspects the user mentioned while maintaining focus on style over content.` : ""}
-
-Focus exclusively on style elements, not the subject matter. Output a natural, flowing description suitable as an image generation prompt.`;
+    return `Analyze this image and extract its visual style characteristics.
+${userGuidance ? `\nUser notes: "${userGuidance}"\nPay special attention to the aspects the user mentioned while maintaining focus on style over content.\n` : ""}
+Output 5 platform-optimized prompts as specified in the format above.`;
   } else {
-    return `Analyze these ${imageCount} images and extract their COMMON style characteristics into a detailed prompt that could be used to generate new images in the same style.
-
-${userGuidance ? `User notes: "${userGuidance}"\n\nPay special attention to the aspects the user mentioned.` : ""}
-
-Focus on style patterns that appear across multiple images, not unique elements of individual images. Output a unified style description suitable as an image generation prompt.`;
+    return `Analyze these ${imageCount} images and extract their COMMON style characteristics.
+${userGuidance ? `\nUser notes: "${userGuidance}"\nPay special attention to the aspects the user mentioned.\n` : ""}
+Focus on style patterns that appear across multiple images. Output 5 platform-optimized prompts as specified in the format above.`;
   }
 }
 
@@ -43,10 +46,41 @@ export interface StyleExtractionRequest {
   apiKey: string;
 }
 
+export type PlatformKey = "midjourney" | "chatgpt" | "flux" | "nano_banana" | "seedream";
+
+export interface PlatformPrompts {
+  midjourney: string;
+  chatgpt: string;
+  flux: string;
+  nano_banana: string;
+  seedream: string;
+}
+
 export interface StyleExtractionResponse {
   success: boolean;
-  stylePrompt?: string;
+  prompts?: PlatformPrompts;
   error?: string;
+}
+
+function parsePlatformPrompts(rawOutput: string): PlatformPrompts | null {
+  const platforms: PlatformKey[] = ["midjourney", "chatgpt", "flux", "nano_banana", "seedream"];
+  const result: Partial<PlatformPrompts> = {};
+
+  for (let i = 0; i < platforms.length; i++) {
+    const platform = platforms[i];
+    const label = platform.toUpperCase().replace("_", "_");
+    const regex = new RegExp(`${label}:\\s*(.+?)(?=(?:MIDJOURNEY:|CHATGPT:|FLUX:|NANO_BANANA:|SEEDREAM:|$))`, "is");
+    const match = rawOutput.match(regex);
+    if (match && match[1]) {
+      result[platform] = match[1].trim();
+    }
+  }
+
+  if (Object.keys(result).length === 5) {
+    return result as PlatformPrompts;
+  }
+
+  return null;
 }
 
 export async function extractStyleFromImage({
@@ -69,25 +103,33 @@ export async function extractStyleFromImage({
       },
     }) as unknown;
 
-    let stylePrompt: string;
+    let rawOutput: string;
     if (typeof output === "string") {
-      stylePrompt = output.trim();
+      rawOutput = output.trim();
     } else if (Array.isArray(output)) {
-      stylePrompt = output.join("").trim();
+      rawOutput = output.join("").trim();
     } else {
-      stylePrompt = String(output).trim();
+      rawOutput = String(output).trim();
     }
 
-    if (!stylePrompt) {
+    if (!rawOutput) {
       return {
         success: false,
         error: "No style description generated",
       };
     }
 
+    const prompts = parsePlatformPrompts(rawOutput);
+    if (!prompts) {
+      return {
+        success: false,
+        error: "Failed to parse platform-specific prompts from response",
+      };
+    }
+
     return {
       success: true,
-      stylePrompt,
+      prompts,
     };
   } catch (error) {
     console.error("[styleExtraction] Error:", error);

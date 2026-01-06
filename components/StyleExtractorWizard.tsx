@@ -7,7 +7,7 @@ import { UploadStep, type UploadedImage } from "./UploadStep";
 import { AnalyzingStep } from "./AnalyzingStep";
 import { ResultStep } from "./ResultStep";
 import { uploadMultipleImages } from "@/utils/uploadImage";
-import { postStyleExtraction } from "@/utils/styleExtractionClient";
+import { postStyleExtraction, type PlatformPrompts } from "@/utils/styleExtractionClient";
 
 type WizardStep = "upload" | "analyzing" | "result";
 
@@ -18,7 +18,7 @@ export function StyleExtractorWizard() {
   const [apiKey, setApiKey] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [userGuidance, setUserGuidance] = useState("");
-  const [stylePrompt, setStylePrompt] = useState("");
+  const [prompts, setPrompts] = useState<PlatformPrompts | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Load API key from localStorage on mount
@@ -60,11 +60,11 @@ export function StyleExtractorWizard() {
         apiKey,
       });
 
-      if (!extractResult.success || !extractResult.stylePrompt) {
+      if (!extractResult.success || !extractResult.prompts) {
         throw new Error(extractResult.error || "Failed to extract style");
       }
 
-      setStylePrompt(extractResult.stylePrompt);
+      setPrompts(extractResult.prompts);
       setStep("result");
       toast.success("Style extracted successfully!");
     } catch (err) {
@@ -83,7 +83,7 @@ export function StyleExtractorWizard() {
     setStep("upload");
     setImages([]);
     setUserGuidance("");
-    setStylePrompt("");
+    setPrompts(null);
     setError(null);
   };
 
@@ -112,9 +112,9 @@ export function StyleExtractorWizard() {
 
       {step === "analyzing" && <AnalyzingStep imageCount={images.length} />}
 
-      {step === "result" && (
+      {step === "result" && prompts && (
         <ResultStep
-          stylePrompt={stylePrompt}
+          prompts={prompts}
           imageCount={images.length}
           onStartOver={handleStartOver}
         />

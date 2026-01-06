@@ -4,9 +4,19 @@ export interface StyleExtractionRequest {
   apiKey: string;
 }
 
+export interface PlatformPrompts {
+  midjourney: string;
+  chatgpt: string;
+  flux: string;
+  nano_banana: string;
+  seedream: string;
+}
+
+export type PlatformKey = keyof PlatformPrompts;
+
 export interface StyleExtractionResponse {
   success: boolean;
-  stylePrompt?: string;
+  prompts?: PlatformPrompts;
   error?: string;
   imageCount?: number;
 }
