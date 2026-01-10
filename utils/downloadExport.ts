@@ -15,13 +15,13 @@ interface PlatformConfig {
 }
 
 const PLATFORM_CONFIG: Record<PlatformKey, PlatformConfig> = {
-  chatgpt: { label: "ChatGPT" },
+  gpt_image: { label: "GPT Image", fullModelName: "OpenAI GPT Image 1.5" },
   flux: { label: "Flux", fullModelName: "Black Forest Labs Flux 2 Pro" },
   nano_banana: { label: "Nano Banana", fullModelName: "Google Imagen 3 (Nano Banana Pro)" },
   seedream: { label: "Seedream", fullModelName: "ByteDance Seedream 4.5" },
 };
 
-const PLATFORM_ORDER: PlatformKey[] = ["flux", "nano_banana", "seedream", "chatgpt"];
+const PLATFORM_ORDER: PlatformKey[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 
 function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
@@ -88,11 +88,8 @@ function generateReadme(
     if (imageFilename) {
       lines.push(`![${config.label} Generated Image](images/${imageFilename})`);
       lines.push("");
-    } else if (platform !== "chatgpt") {
-      lines.push("*No image generated*");
-      lines.push("");
     } else {
-      lines.push("*Text-only prompt (no image generation)*");
+      lines.push("*No image generated*");
       lines.push("");
     }
 
@@ -204,12 +201,6 @@ async function generatePDF(
       }
     } else {
       // No image - just show prompt
-      if (platform === "chatgpt") {
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.text("(Text-only prompt - no image generation)", margin, y);
-        y += 5;
-      }
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       const lines = doc.splitTextToSize(prompt, contentWidth);

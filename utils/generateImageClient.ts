@@ -1,4 +1,4 @@
-export type GeneratePlatform = "flux" | "nano_banana" | "seedream";
+export type GeneratePlatform = "gpt_image" | "flux" | "nano_banana" | "seedream";
 
 export interface GenerateImageRequest {
   prompt: string;

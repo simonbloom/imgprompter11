@@ -59,7 +59,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing these photographic characteristics.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: lighting/atmosphere, then camera/lens feel, then film/processing style, ~60-80 words]
+GPT_IMAGE: [structured paragraph: lighting/atmosphere, then camera/lens feel, then film/processing style, ~60-80 words]
 FLUX: [subject-first format: photographic style + technical feel, 30-80 words]
 NANO_BANANA: [camera-first: shot type + focal length feel + DOF, then composition, then lighting + color palette from film/processing, ~80-100 words]
 SEEDREAM: [priority-ordered: most distinctive photographic elements first, 30-100 words]
@@ -97,7 +97,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing these illustration characteristics.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: line quality description, then tool/medium feel, then hatching/shading technique, ~60-80 words]
+GPT_IMAGE: [structured paragraph: line quality description, then tool/medium feel, then hatching/shading technique, ~60-80 words]
 FLUX: [illustration style + technique descriptors, 30-80 words]
 NANO_BANANA: [composition framing, then line work style, then shading technique, then medium feel, ~80-100 words]
 SEEDREAM: [priority-ordered: most distinctive illustration elements first - line quality, hatching style, tool feel, 30-100 words]
@@ -137,7 +137,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing these painting characteristics.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: medium/technique, then brush work, then color approach, ~60-80 words]
+GPT_IMAGE: [structured paragraph: medium/technique, then brush work, then color approach, ~60-80 words]
 FLUX: [painting style + medium + technique descriptors, 30-80 words]
 NANO_BANANA: [composition, then painting medium feel, then brush technique, then color palette, ~80-100 words]
 SEEDREAM: [priority-ordered: medium, technique, color approach, 30-100 words]
@@ -177,7 +177,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing these digital art characteristics.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: digital style category, then rendering technique, then effects/color, ~60-80 words]
+GPT_IMAGE: [structured paragraph: digital style category, then rendering technique, then effects/color, ~60-80 words]
 FLUX: [digital art style + rendering approach, 30-80 words]
 NANO_BANANA: [composition, then digital rendering style, then color/lighting approach, ~80-100 words]
 SEEDREAM: [priority-ordered: style category, rendering technique, distinctive digital elements, 30-100 words]
@@ -214,7 +214,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing these 3D characteristics.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: render style, then materials/lighting, then camera/post effects, ~60-80 words]
+GPT_IMAGE: [structured paragraph: render style, then materials/lighting, then camera/post effects, ~60-80 words]
 FLUX: [3D style + rendering approach + lighting, 30-80 words]
 NANO_BANANA: [camera/composition, then render style, then lighting setup, then material feel, ~80-100 words]
 SEEDREAM: [priority-ordered: render style, lighting, materials, post-processing, 30-100 words]
@@ -253,7 +253,7 @@ OUTPUT FORMAT:
 Output 4 platform-optimized prompts capturing this mixed media aesthetic.
 Use EXACTLY this format:
 
-CHATGPT: [structured paragraph: primary medium, then secondary elements, then combination style, ~60-80 words]
+GPT_IMAGE: [structured paragraph: primary medium, then secondary elements, then combination style, ~60-80 words]
 FLUX: [mixed media style description + component techniques, 30-80 words]
 NANO_BANANA: [composition, then dominant technique, then secondary elements, then integration style, ~80-100 words]
 SEEDREAM: [priority-ordered: dominant medium, combination approach, distinctive mixed elements, 30-100 words]
@@ -281,10 +281,10 @@ export interface StyleExtractionRequest {
   apiKey: string;
 }
 
-export type PlatformKey = "chatgpt" | "flux" | "nano_banana" | "seedream";
+export type PlatformKey = "gpt_image" | "flux" | "nano_banana" | "seedream";
 
 export interface PlatformPrompts {
-  chatgpt: string;
+  gpt_image: string;
   flux: string;
   nano_banana: string;
   seedream: string;
@@ -298,14 +298,14 @@ export interface StyleExtractionResponse {
 
 function parsePlatformPrompts(rawOutput: string): PlatformPrompts | null {
   const platformLabels: Record<PlatformKey, string[]> = {
-    chatgpt: ["CHATGPT:", "**CHATGPT:**", "ChatGPT:", "CHATGPT :", "ChatGPT :"],
+    gpt_image: ["GPT_IMAGE:", "**GPT_IMAGE:**", "GPT Image:", "GPT_IMAGE :", "GPT IMAGE:"],
     flux: ["FLUX:", "**FLUX:**", "Flux:"],
     nano_banana: ["NANO_BANANA:", "**NANO_BANANA:**", "Nano Banana:", "NANO BANANA:"],
     seedream: ["SEEDREAM:", "**SEEDREAM:**", "Seedream:", "SEEDREAM :"],
   };
 
   const result: Partial<PlatformPrompts> = {};
-  const platforms: PlatformKey[] = ["chatgpt", "flux", "nano_banana", "seedream"];
+  const platforms: PlatformKey[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 
   // Find all label positions
   const labelPositions: { platform: PlatformKey; position: number }[] = [];

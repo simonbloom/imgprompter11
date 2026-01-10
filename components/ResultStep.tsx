@@ -26,12 +26,13 @@ interface ResultStepProps {
   onGenerationErrorsChange?: (errors: Partial<Record<PlatformKey, string>>) => void;
 }
 
-const REPLICATE_SUPPORTED_PLATFORMS: PlatformKey[] = ["flux", "nano_banana", "seedream"];
+const REPLICATE_SUPPORTED_PLATFORMS: PlatformKey[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 
 export const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string; fullModelName?: string }> = {
-  chatgpt: {
-    label: "ChatGPT",
-    tip: "Structure: Scene → Subject → Details → Constraints. Use quotes for text. Specify camera/lens for realism.",
+  gpt_image: {
+    label: "GPT Image",
+    fullModelName: "OpenAI GPT Image 1.5",
+    tip: "Excels at photorealism and precise instruction following. Use clear, direct descriptions. Specify lighting and mood explicitly.",
   },
   flux: {
     label: "Flux",
@@ -50,7 +51,7 @@ export const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string; 
   },
 };
 
-const PLATFORM_ORDER: PlatformKey[] = ["chatgpt", "flux", "nano_banana", "seedream"];
+const PLATFORM_ORDER: PlatformKey[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 const STORAGE_KEY = "imgprompter-selected-platform";
 const GENERATED_IMAGES_KEY = "imgprompter-generated-images";
 
@@ -76,7 +77,7 @@ export function ResultStep({
         return stored as PlatformKey;
       }
     }
-    return "chatgpt";
+    return "gpt_image";
   });
 
   // Load generated images from localStorage on mount
@@ -456,7 +457,7 @@ export function ResultStep({
           </div>
 
           <p className="mt-2 text-xs text-[var(--text-muted)]">
-            💰 Generates 3 images (~$0.06-0.12 total, charged to your Replicate account)
+            💰 Generates 4 images (~$0.08-0.16 total, charged to your Replicate account)
           </p>
         </div>
 

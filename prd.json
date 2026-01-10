@@ -1,7 +1,7 @@
 {
   "project": "ImgPrompter Accordion UI",
   "branchName": "ralph/accordion-ui",
-  "description": "Add progressive accordion UI that collapses completed sections as user moves through the workflow. Users can manually open/close any section at any time.",
+  "description": "Add progressive accordion UI and GPT Image 1.5 support. Rename ChatGPT to GPT Image and enable image generation via Replicate.",
   "userStories": [
     {
       "id": "US-001",
@@ -230,6 +230,79 @@
       "priority": 5,
       "passes": true,
       "notes": "Added generatePDF function using jsPDF with images embedded and text layout"
+    },
+    {
+      "id": "US-016",
+      "title": "Rename chatgpt to gpt_image in type definitions",
+      "description": "As a developer, I need to rename the chatgpt platform key to gpt_image throughout the type system.",
+      "acceptanceCriteria": [
+        "Update PlatformKey type in services/styleExtraction.ts: chatgpt → gpt_image",
+        "Update PlatformPrompts interface: chatgpt → gpt_image",
+        "Update utils/styleExtractionClient.ts: chatgpt → gpt_image",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Updated types in styleExtraction.ts, styleExtractionClient.ts"
+    },
+    {
+      "id": "US-017",
+      "title": "Update style extraction prompts for GPT Image",
+      "description": "As a developer, I need to update the prompt labels from CHATGPT to GPT_IMAGE in style extraction.",
+      "acceptanceCriteria": [
+        "Change 'CHATGPT:' to 'GPT_IMAGE:' in all 6 specialized prompts",
+        "Update parsePlatformPrompts() label matching",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Changed all 6 CHATGPT labels to GPT_IMAGE in styleExtraction.ts"
+    },
+    {
+      "id": "US-018",
+      "title": "Add GPT Image 1.5 to generate-image API",
+      "description": "As a developer, I need to add GPT Image 1.5 model support to the image generation API.",
+      "acceptanceCriteria": [
+        "Add gpt_image to GeneratePlatform type in generateImageClient.ts",
+        "Add gpt_image: 'openai/gpt-image-1.5' to MODEL_MAP in route.ts",
+        "Add gpt_image to SUPPORTED_PLATFORMS array",
+        "Add getModelInput case with quality: 'high', aspect_ratio: '1:1', output_format: 'webp'",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Added model to route.ts with proper config"
+    },
+    {
+      "id": "US-019",
+      "title": "Update ResultStep UI for GPT Image",
+      "description": "As a user, I want to see GPT Image as a platform option that can generate images.",
+      "acceptanceCriteria": [
+        "Rename chatgpt → gpt_image in PLATFORM_CONFIG",
+        "Update label: 'ChatGPT' → 'GPT Image'",
+        "Add fullModelName: 'OpenAI GPT Image 1.5'",
+        "Add gpt_image to REPLICATE_SUPPORTED_PLATFORMS (now all 4 generate)",
+        "Update cost estimate: '4 images (~$0.08-0.16 total)'",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Updated ResultStep.tsx with all 4 platforms generating images"
+    },
+    {
+      "id": "US-020",
+      "title": "Update downloadExport for GPT Image",
+      "description": "As a developer, I need to update the download export utilities for the renamed platform.",
+      "acceptanceCriteria": [
+        "Rename chatgpt → gpt_image in PLATFORM_CONFIG",
+        "Update label to 'GPT Image'",
+        "Update fullModelName to 'OpenAI GPT Image 1.5'",
+        "Update PLATFORM_ORDER array",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Updated downloadExport.ts, removed text-only handling"
     }
   ]
 }

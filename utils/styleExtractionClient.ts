@@ -5,7 +5,7 @@ export interface StyleExtractionRequest {
 }
 
 export interface PlatformPrompts {
-  chatgpt: string;
+  gpt_image: string;
   flux: string;
   nano_banana: string;
   seedream: string;

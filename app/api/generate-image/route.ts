@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
 
-type SupportedPlatform = "flux" | "nano_banana" | "seedream";
+type SupportedPlatform = "gpt_image" | "flux" | "nano_banana" | "seedream";
 
 const MODEL_MAP: Record<SupportedPlatform, string> = {
+  gpt_image: "openai/gpt-image-1.5",
   flux: "black-forest-labs/flux-2-pro",
   nano_banana: "google/nano-banana-pro",
   seedream: "bytedance/seedream-4.5",
 };
 
-const SUPPORTED_PLATFORMS: SupportedPlatform[] = ["flux", "nano_banana", "seedream"];
+const SUPPORTED_PLATFORMS: SupportedPlatform[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 
 function getModelInput(platform: SupportedPlatform, prompt: string): Record<string, unknown> {
   switch (platform) {
+    case "gpt_image":
+      return {
+        prompt,
+        quality: "high",
+        aspect_ratio: "1:1",
+        output_format: "webp",
+      };
     case "flux":
       return {
         prompt,
