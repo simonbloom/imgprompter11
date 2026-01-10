@@ -34,6 +34,7 @@ export function StyleExtractorWizard() {
   const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
   const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Load API key from localStorage on mount
   useEffect(() => {
@@ -112,6 +113,21 @@ export function StyleExtractorWizard() {
       toast.success("Image downloaded");
     } catch {
       toast.error("Failed to download image");
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (generatedImages.length === 0 || !prompts) return;
+    
+    setIsDownloading(true);
+    try {
+      // TODO: Implement full export in US-013
+      toast.info("Download All - coming soon!");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.error("Failed to create download");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -244,9 +260,9 @@ export function StyleExtractorWizard() {
           summary={generatedImages.length > 0 ? `${generatedImages.length} image${generatedImages.length !== 1 ? "s" : ""}` : undefined}
         >
           <div className="space-y-4">
-            {/* Header with Clear button */}
+            {/* Header with action buttons */}
             {generatedImages.length > 0 && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClearImages}
                   className={cn(
@@ -256,6 +272,27 @@ export function StyleExtractorWizard() {
                   )}
                 >
                   Clear All
+                </button>
+                <button
+                  onClick={handleDownloadAll}
+                  disabled={isDownloading || generatedImages.length === 0}
+                  className={cn(
+                    "px-3 py-1 text-xs",
+                    "border border-[var(--border-color)]",
+                    "transition-colors flex items-center gap-1",
+                    isDownloading || generatedImages.length === 0
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-[var(--bg-secondary)]"
+                  )}
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Preparing...
+                    </>
+                  ) : (
+                    "Download All"
+                  )}
                 </button>
               </div>
             )}
