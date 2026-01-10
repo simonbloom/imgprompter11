@@ -162,6 +162,43 @@ export function ResultStep({
     return basePrompt;
   };
 
+  // Generate with automatic retry (up to 3 attempts)
+  const generateWithRetry = async (platform: PlatformKey, maxRetries = 3) => {
+    const prompt = getPromptForPlatform(platform);
+    let lastError = "Unknown error";
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await generateImage({
+          prompt,
+          platform: platform as GeneratePlatform,
+          apiKey,
+        });
+
+        if (result.success && result.imageUrl) {
+          return { success: true, imageUrl: result.imageUrl };
+        }
+
+        lastError = result.error || "Failed to generate";
+
+        // Don't retry on content policy errors
+        if (lastError.includes("content policy") || lastError.includes("Invalid API")) {
+          break;
+        }
+
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      } catch (error) {
+        console.error(`Generation attempt ${attempt} for ${platform}:`, error);
+        lastError = "Network error";
+      }
+    }
+
+    return { success: false, error: lastError };
+  };
+
   const handleGenerateAll = async () => {
     if (!canGenerateNow || isGenerating) return;
 
@@ -170,49 +207,38 @@ export function ResultStep({
 
     // Generate for all supported platforms in parallel
     const platformsToGenerate = REPLICATE_SUPPORTED_PLATFORMS;
-    
+
     // Mark all as generating
     setGeneratingPlatforms(new Set(platformsToGenerate));
 
-    // Start all generations in parallel
+    // Start all generations in parallel (each with its own retry logic)
     platformsToGenerate.forEach(async (platform) => {
-      try {
-        const prompt = getPromptForPlatform(platform);
-        const result = await generateImage({
-          prompt,
-          platform: platform as GeneratePlatform,
-          apiKey,
-        });
+      const result = await generateWithRetry(platform);
 
-        if (result.success && result.imageUrl) {
-          const newImage: GeneratedImage = {
-            url: result.imageUrl,
-            platform,
-            timestamp: Date.now(),
-          };
-          setGeneratedImages((prev) => {
-            const updated = [...prev, newImage];
-            localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
-            return updated;
-          });
-          toast.success(`${PLATFORM_CONFIG[platform].label} image ready!`);
-          onImageGenerated?.();
-        } else {
-          const errorMessage = result.error || "Failed to generate";
-          setGenerationErrors((prev) => ({ ...prev, [platform]: errorMessage }));
-          toast.error(`${PLATFORM_CONFIG[platform].label}: ${errorMessage}`);
-        }
-      } catch (error) {
-        console.error(`Generation error for ${platform}:`, error);
-        setGenerationErrors((prev) => ({ ...prev, [platform]: "Network error" }));
-      } finally {
-        // Remove this platform from generating set
-        setGeneratingPlatforms((prev) => {
-          const updated = new Set(prev);
-          updated.delete(platform);
+      if (result.success && result.imageUrl) {
+        const newImage: GeneratedImage = {
+          url: result.imageUrl,
+          platform,
+          timestamp: Date.now(),
+        };
+        setGeneratedImages((prev) => {
+          const updated = [...prev, newImage];
+          localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
           return updated;
         });
+        toast.success(`${PLATFORM_CONFIG[platform].label} image ready!`);
+        onImageGenerated?.();
+      } else {
+        setGenerationErrors((prev) => ({ ...prev, [platform]: result.error || "Failed after 3 attempts" }));
+        toast.error(`${PLATFORM_CONFIG[platform].label}: ${result.error}`);
       }
+
+      // Remove this platform from generating set
+      setGeneratingPlatforms((prev) => {
+        const updated = new Set(prev);
+        updated.delete(platform);
+        return updated;
+      });
     });
   };
 
