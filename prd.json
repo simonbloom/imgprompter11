@@ -156,6 +156,80 @@
       "priority": 1,
       "passes": true,
       "notes": "Lifted generated images state to StyleExtractorWizard, created separate accordion, changed grid to 3 columns"
+    },
+    {
+      "id": "US-011",
+      "title": "Install ZIP and PDF dependencies",
+      "description": "As a developer, I need libraries to create ZIP files and PDFs client-side.",
+      "acceptanceCriteria": [
+        "Install jszip package",
+        "Install file-saver package",
+        "Install jspdf package",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Installed jszip@3.10.1, file-saver@2.0.5, jspdf@4.0.0, @types/file-saver"
+    },
+    {
+      "id": "US-012",
+      "title": "Create Download All button in Generated Images accordion",
+      "description": "As a user, I want a Download All button next to Clear All when images are generated.",
+      "acceptanceCriteria": [
+        "Add 'Download All' button next to 'Clear All'",
+        "Button disabled when no images",
+        "Button shows 'Preparing...' with spinner when downloading",
+        "Same styling as Clear All button",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Create ZIP with images and prompt text files",
+      "description": "As a user, I want the ZIP to contain images in an images/ folder and prompts as .txt files.",
+      "acceptanceCriteria": [
+        "Create utils/downloadExport.ts",
+        "ZIP contains images/{platform}-{timestamp}.png for each image",
+        "ZIP contains prompts/{platform}.txt for each prompt (all 4 platforms)",
+        "Each .txt file has platform name, full model name, and prompt text",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Add README.md to ZIP export",
+      "description": "As a user, I want a README.md in the ZIP with all prompts and image references.",
+      "acceptanceCriteria": [
+        "Generate README.md with title and generation date",
+        "Each platform section has prompt text",
+        "Sections with generated images include markdown image reference",
+        "ChatGPT section included (text-only, no image)",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add PDF summary to ZIP export",
+      "description": "As a user, I want a summary.pdf in the ZIP with images and prompts.",
+      "acceptanceCriteria": [
+        "Generate PDF using jsPDF",
+        "PDF has title and generation date",
+        "Each platform section shows image thumbnail (if exists) and prompt text",
+        "PDF is A4 format, readable layout",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
