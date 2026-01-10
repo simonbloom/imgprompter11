@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Check, Sparkles, X, Loader2, Download, RefreshCw, RotateCcw } from "lucide-react";
+import { Copy, Check, Sparkles, X, Loader2, Download, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
@@ -57,9 +57,9 @@ export function ResultStep({
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
   const [editedPrompts, setEditedPrompts] = useState<Partial<Record<PlatformKey, string>>>({});
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]); 
-  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -145,50 +145,75 @@ export function ResultStep({
     }
   };
 
-  const canGenerate = REPLICATE_SUPPORTED_PLATFORMS.includes(selectedPlatform);
   const hasSubject = subject.trim().length > 0;
-  const canGenerateNow = hasSubject || hasEdits;
+  const canGenerateNow = hasSubject || Object.keys(editedPrompts).length > 0;
+  const isGenerating = generatingPlatforms.size > 0;
+  const generatingCount = generatingPlatforms.size;
 
-  const handleGenerate = async () => {
-    if (!canGenerate || !canGenerateNow || isGenerating) return;
+  // Get prompt for a specific platform (with subject merged in)
+  const getPromptForPlatform = (platform: PlatformKey): string => {
+    const basePrompt = prompts[platform];
+    if (editedPrompts[platform]) {
+      return editedPrompts[platform];
+    }
+    if (subject.trim()) {
+      return `${subject.trim()}, rendered in ${basePrompt.charAt(0).toLowerCase()}${basePrompt.slice(1)}`;
+    }
+    return basePrompt;
+  };
 
-    const platformToGenerate = selectedPlatform;
-    setIsGenerating(true);
-    setGenerationError(null);
+  const handleGenerateAll = async () => {
+    if (!canGenerateNow || isGenerating) return;
 
-    try {
-      const result = await generateImage({
-        prompt: effectivePrompt,
-        platform: platformToGenerate as GeneratePlatform,
-        apiKey,
-      });
+    // Clear previous errors
+    setGenerationErrors({});
 
-      if (result.success && result.imageUrl) {
-        const newImage: GeneratedImage = {
-          url: result.imageUrl,
-          platform: platformToGenerate,
-          timestamp: Date.now(),
-        };
-        setGeneratedImages((prev) => {
-          const updated = [...prev, newImage];
-          localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
+    // Generate for all supported platforms in parallel
+    const platformsToGenerate = REPLICATE_SUPPORTED_PLATFORMS;
+    
+    // Mark all as generating
+    setGeneratingPlatforms(new Set(platformsToGenerate));
+
+    // Start all generations in parallel
+    platformsToGenerate.forEach(async (platform) => {
+      try {
+        const prompt = getPromptForPlatform(platform);
+        const result = await generateImage({
+          prompt,
+          platform: platform as GeneratePlatform,
+          apiKey,
+        });
+
+        if (result.success && result.imageUrl) {
+          const newImage: GeneratedImage = {
+            url: result.imageUrl,
+            platform,
+            timestamp: Date.now(),
+          };
+          setGeneratedImages((prev) => {
+            const updated = [...prev, newImage];
+            localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
+            return updated;
+          });
+          toast.success(`${PLATFORM_CONFIG[platform].label} image ready!`);
+          onImageGenerated?.();
+        } else {
+          const errorMessage = result.error || "Failed to generate";
+          setGenerationErrors((prev) => ({ ...prev, [platform]: errorMessage }));
+          toast.error(`${PLATFORM_CONFIG[platform].label}: ${errorMessage}`);
+        }
+      } catch (error) {
+        console.error(`Generation error for ${platform}:`, error);
+        setGenerationErrors((prev) => ({ ...prev, [platform]: "Network error" }));
+      } finally {
+        // Remove this platform from generating set
+        setGeneratingPlatforms((prev) => {
+          const updated = new Set(prev);
+          updated.delete(platform);
           return updated;
         });
-        toast.success(`Image generated with ${PLATFORM_CONFIG[platformToGenerate].label}!`);
-        onImageGenerated?.();
-      } else {
-        const errorMessage = result.error || "Failed to generate image";
-        setGenerationError(errorMessage);
-        toast.error(errorMessage);
       }
-    } catch (error) {
-      console.error("Generation error:", error);
-      const errorMessage = "Network error. Please check your connection and try again.";
-      setGenerationError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsGenerating(false);
-    }
+    });
   };
 
   const handleDownload = async (image: GeneratedImage) => {
@@ -358,48 +383,44 @@ export function ResultStep({
               </button>
             )}
 
-            {canGenerate && (
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerateNow || isGenerating}
-                aria-label={
-                  !canGenerateNow
-                    ? "Add a subject or edit the prompt to generate an image"
-                    : isGenerating
-                    ? "Generating image..."
-                    : `Generate image with ${currentConfig.label}`
-                }
-                title={!canGenerateNow ? "Add a subject or edit the prompt to generate" : undefined}
-                className={cn(
-                  "px-4 py-2",
-                  "flex items-center gap-2 text-sm",
-                  "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
-                  "transition-colors",
-                  canGenerateNow && !isGenerating
-                    ? "bg-[var(--accent-ai)] text-white hover:opacity-90"
-                    : "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
-                )}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles aria-hidden="true" className="w-4 h-4" />
-                    Generate Image
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              onClick={handleGenerateAll}
+              disabled={!canGenerateNow || isGenerating}
+              aria-label={
+                !canGenerateNow
+                  ? "Add a subject or edit the prompt to generate images"
+                  : isGenerating
+                  ? `Generating ${generatingCount} images...`
+                  : "Generate images for all platforms"
+              }
+              title={!canGenerateNow ? "Add a subject or edit the prompt to generate" : undefined}
+              className={cn(
+                "px-4 py-2",
+                "flex items-center gap-2 text-sm",
+                "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
+                "transition-colors",
+                canGenerateNow && !isGenerating
+                  ? "bg-[var(--accent-ai)] text-white hover:opacity-90"
+                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
+              )}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
+                  Generating ({generatingCount}/{REPLICATE_SUPPORTED_PLATFORMS.length})...
+                </>
+              ) : (
+                <>
+                  <Sparkles aria-hidden="true" className="w-4 h-4" />
+                  Generate Images
+                </>
+              )}
+            </button>
           </div>
 
-          {canGenerate && (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">
-              💰 Generating costs ~$0.02-0.04 per image (charged to your Replicate account)
-            </p>
-          )}
+          <p className="mt-2 text-xs text-[var(--text-muted)]">
+            💰 Generates 3 images (~$0.06-0.12 total, charged to your Replicate account)
+          </p>
         </div>
 
         {/* Platform Tip */}
@@ -412,13 +433,19 @@ export function ResultStep({
       </div>
 
       {/* Generated Images Grid */}
-      {(generatedImages.length > 0 || isGenerating || generationError) && (
+      {(generatedImages.length > 0 || isGenerating || Object.keys(generationErrors).length > 0) && (
         <div className="border border-[var(--border-color)] p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium flex items-center gap-2">
               🎨 Generated Images
               {generatedImages.length > 0 && (
                 <span className="text-[var(--text-muted)]">({generatedImages.length})</span>
+              )}
+              {isGenerating && (
+                <span className="text-[var(--accent-ai)] flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {generatingCount} generating...
+                </span>
               )}
             </h3>
             {generatedImages.length > 0 && (
@@ -435,62 +462,51 @@ export function ResultStep({
             )}
           </div>
 
-          {/* Loading State */}
-          {isGenerating && (
-            <div className="flex items-center gap-3 p-4 bg-[var(--bg-secondary)] mb-4">
-              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-ai)]" />
-              <div>
-                <p className="text-sm">Generating with {currentConfig.fullModelName}...</p>
-                <p className="text-xs text-[var(--text-muted)]">This may take 5-15 seconds</p>
+          {/* 2x2 Grid with Loading Placeholders */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Show loading placeholders for platforms being generated */}
+            {Array.from(generatingPlatforms).map((platform) => (
+              <div key={`loading-${platform}`} className="aspect-square border border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-ai)] mb-2" />
+                <p className="text-sm text-[var(--text-secondary)]">{PLATFORM_CONFIG[platform].label}</p>
+                <p className="text-xs text-[var(--text-muted)]">Generating...</p>
               </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {generationError && !isGenerating && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 mb-4">
-              <X className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="text-sm text-red-600">{generationError}</p>
-                <button
-                  onClick={handleGenerate}
-                  disabled={!canGenerateNow}
-                  className="text-xs text-red-700 underline mt-1"
-                >
-                  Try Again
-                </button>
+            ))}
+            
+            {/* Show error placeholders */}
+            {Object.entries(generationErrors).map(([platform, error]) => (
+              <div key={`error-${platform}`} className="aspect-square border border-red-200 bg-red-50 flex flex-col items-center justify-center p-4">
+                <X className="w-8 h-8 text-red-400 mb-2" />
+                <p className="text-sm text-red-600">{PLATFORM_CONFIG[platform as PlatformKey].label}</p>
+                <p className="text-xs text-red-500 text-center mt-1">{error}</p>
               </div>
-            </div>
-          )}
-
-          {/* 2x2 Grid */}
-          {generatedImages.length > 0 && (
-            <div className="grid grid-cols-2 gap-4">
-              {generatedImages.map((image, index) => (
-                <div key={image.timestamp} className="relative group">
-                  <img
-                    src={image.url}
-                    alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
-                    className="w-full aspect-square object-cover border border-[var(--border-color)]"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
-                    <span>{PLATFORM_CONFIG[image.platform].label}</span>
-                    <button
-                      onClick={() => handleDownload(image)}
-                      className="p-1 hover:bg-white/20 rounded"
-                      title="Download"
-                    >
-                      <Download className="w-3 h-3" />
-                    </button>
-                  </div>
+            ))}
+            
+            {/* Show generated images */}
+            {generatedImages.map((image) => (
+              <div key={image.timestamp} className="relative group">
+                <img
+                  src={image.url}
+                  alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
+                  className="w-full aspect-square object-cover border border-[var(--border-color)]"
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
+                  <span>{PLATFORM_CONFIG[image.platform].label}</span>
+                  <button
+                    onClick={() => handleDownload(image)}
+                    className="p-1 hover:bg-white/20 rounded"
+                    title="Download"
+                  >
+                    <Download className="w-3 h-3" />
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
 
-          {generatedImages.length === 0 && !isGenerating && !generationError && (
+          {generatedImages.length === 0 && !isGenerating && Object.keys(generationErrors).length === 0 && (
             <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No images generated yet. Add a subject and click Generate Image.
+              No images generated yet. Add a subject and click Generate Images.
             </p>
           )}
         </div>
