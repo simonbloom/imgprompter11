@@ -140,6 +140,22 @@
       "priority": 1,
       "passes": true,
       "notes": "Wrapped ResultStep in Accordion, removed duplicate header from ResultStep"
+    },
+    {
+      "id": "US-010",
+      "title": "Separate Generated Images accordion with 3-column grid",
+      "description": "As a user, I want Generated Images in its own accordion section (separate from Style Prompts) with a 3-column grid layout.",
+      "acceptanceCriteria": [
+        "Generated Images is a separate accordion below Style Prompts",
+        "Accordion shows image count in summary when collapsed",
+        "Grid uses 3 columns instead of 2",
+        "Lightbox still works when clicking images",
+        "Clear All button still works",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Lifted generated images state to StyleExtractorWizard, created separate accordion, changed grid to 3 columns"
     }
   ]
 }

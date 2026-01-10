@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Key, Upload, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Key, Upload, Sparkles, ImageIcon, Loader2, X, Download } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
-import { ResultStep } from "./ResultStep";
+import { ResultStep, type GeneratedImage, PLATFORM_CONFIG } from "./ResultStep";
 import { Accordion } from "./ui/Accordion";
+import { Lightbox } from "./ui/Lightbox";
 import { uploadMultipleImages } from "@/utils/uploadImage";
-import { postStyleExtraction, type PlatformPrompts } from "@/utils/styleExtractionClient";
+import { postStyleExtraction, type PlatformPrompts, type PlatformKey } from "@/utils/styleExtractionClient";
 
 const STORAGE_KEY = "imgprompter_replicate_api_key";
 const GENERATED_IMAGES_KEY = "imgprompter-generated-images";
@@ -25,6 +27,13 @@ export function StyleExtractorWizard() {
   const [apiKeyOpen, setApiKeyOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(true);
   const [stylePromptsOpen, setStylePromptsOpen] = useState(true);
+  const [imagesOpen, setImagesOpen] = useState(true);
+
+  // Generated images state (lifted from ResultStep)
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
+  const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Load API key from localStorage on mount
   useEffect(() => {
@@ -50,6 +59,61 @@ export function StyleExtractorWizard() {
       setUploadOpen(false);
     }
   }, [prompts]);
+
+  // Load generated images from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(GENERATED_IMAGES_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setGeneratedImages(parsed);
+          }
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+  }, []);
+
+  // Callbacks to receive state from ResultStep
+  const handleGeneratedImagesChange = useCallback((images: GeneratedImage[]) => {
+    setGeneratedImages(images);
+  }, []);
+
+  const handleGeneratingPlatformsChange = useCallback((platforms: Set<PlatformKey>) => {
+    setGeneratingPlatforms(platforms);
+  }, []);
+
+  const handleGenerationErrorsChange = useCallback((errors: Partial<Record<PlatformKey, string>>) => {
+    setGenerationErrors(errors);
+  }, []);
+
+  const handleClearImages = () => {
+    setGeneratedImages([]);
+    setGenerationErrors({});
+    localStorage.removeItem(GENERATED_IMAGES_KEY);
+    toast.success("Images cleared");
+  };
+
+  const handleDownload = async (image: GeneratedImage) => {
+    try {
+      const response = await fetch(image.url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${PLATFORM_CONFIG[image.platform].label.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Image downloaded");
+    } catch {
+      toast.error("Failed to download image");
+    }
+  };
 
   const handleExtract = async () => {
     if (!apiKey) {
@@ -162,8 +226,114 @@ export function StyleExtractorWizard() {
             prompts={prompts}
             imageCount={images.length}
             apiKey={apiKey}
+            onGeneratedImagesChange={handleGeneratedImagesChange}
+            onGeneratingPlatformsChange={handleGeneratingPlatformsChange}
+            onGenerationErrorsChange={handleGenerationErrorsChange}
           />
         </Accordion>
+      )}
+
+      {/* Generated Images Section */}
+      {(generatedImages.length > 0 || generatingPlatforms.size > 0 || Object.keys(generationErrors).length > 0) && (
+        <Accordion
+          title="Generated Images"
+          icon={<ImageIcon className="w-4 h-4" />}
+          isOpen={imagesOpen}
+          onToggle={() => setImagesOpen(!imagesOpen)}
+          isCompleted={generatedImages.length > 0}
+          summary={generatedImages.length > 0 ? `${generatedImages.length} image${generatedImages.length !== 1 ? "s" : ""}` : undefined}
+        >
+          <div className="space-y-4">
+            {/* Header with Clear button */}
+            {generatedImages.length > 0 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleClearImages}
+                  className={cn(
+                    "px-3 py-1 text-xs",
+                    "border border-[var(--border-color)]",
+                    "hover:bg-[var(--bg-secondary)] transition-colors"
+                  )}
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
+
+            {/* 3-column Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Loading placeholders */}
+              {Array.from(generatingPlatforms).map((platform) => (
+                <div key={`loading-${platform}`} className="aspect-square border border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-ai)] mb-2" />
+                  <p className="text-sm text-[var(--text-secondary)]">{PLATFORM_CONFIG[platform].label}</p>
+                  <p className="text-xs text-[var(--text-muted)]">Generating...</p>
+                </div>
+              ))}
+
+              {/* Error placeholders */}
+              {Object.entries(generationErrors).map(([platform, errorMsg]) => (
+                <div key={`error-${platform}`} className="aspect-square border border-red-200 bg-red-50 flex flex-col items-center justify-center p-4">
+                  <X className="w-8 h-8 text-red-400 mb-2" />
+                  <p className="text-sm text-red-600">{PLATFORM_CONFIG[platform as PlatformKey].label}</p>
+                  <p className="text-xs text-red-500 text-center mt-1">{errorMsg}</p>
+                </div>
+              ))}
+
+              {/* Generated images */}
+              {generatedImages.map((image, index) => (
+                <div key={image.timestamp} className="relative group">
+                  <button
+                    onClick={() => setLightboxIndex(index)}
+                    className="w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)]"
+                    aria-label={`View ${PLATFORM_CONFIG[image.platform].label} image in lightbox`}
+                  >
+                    <img
+                      src={image.url}
+                      alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
+                      className="w-full aspect-square object-cover border border-[var(--border-color)] cursor-pointer hover:opacity-90 transition-opacity"
+                    />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
+                    <span>{PLATFORM_CONFIG[image.platform].label}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(image);
+                      }}
+                      className="p-1 hover:bg-white/20 rounded"
+                      title="Download"
+                    >
+                      <Download className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Empty state */}
+            {generatedImages.length === 0 && generatingPlatforms.size === 0 && Object.keys(generationErrors).length === 0 && (
+              <p className="text-sm text-[var(--text-muted)] text-center py-8">
+                No images generated yet. Add a subject and click Generate Images.
+              </p>
+            )}
+          </div>
+        </Accordion>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && generatedImages.length > 0 && (
+        <Lightbox
+          images={generatedImages.map((img) => ({
+            url: img.url,
+            platform: img.platform,
+            label: PLATFORM_CONFIG[img.platform].label,
+          }))}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={(index) => setLightboxIndex(index)}
+          onDownload={() => handleDownload(generatedImages[lightboxIndex])}
+        />
       )}
     </div>
   );

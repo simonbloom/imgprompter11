@@ -8,7 +8,7 @@ import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient
 import { generateImage, type GeneratePlatform } from "@/utils/generateImageClient";
 import { Lightbox } from "./ui/Lightbox";
 
-interface GeneratedImage {
+export interface GeneratedImage {
   url: string;
   platform: PlatformKey;
   timestamp: number;
@@ -19,11 +19,16 @@ interface ResultStepProps {
   imageCount: number;
   apiKey: string;
   onImageGenerated?: () => void;
+  onGeneratedImagesChange?: (images: GeneratedImage[]) => void;
+  generatingPlatforms?: Set<PlatformKey>;
+  onGeneratingPlatformsChange?: (platforms: Set<PlatformKey>) => void;
+  generationErrors?: Partial<Record<PlatformKey, string>>;
+  onGenerationErrorsChange?: (errors: Partial<Record<PlatformKey, string>>) => void;
 }
 
 const REPLICATE_SUPPORTED_PLATFORMS: PlatformKey[] = ["flux", "nano_banana", "seedream"];
 
-const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string; fullModelName?: string }> = {
+export const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string; fullModelName?: string }> = {
   chatgpt: {
     label: "ChatGPT",
     tip: "Structure: Scene → Subject → Details → Constraints. Use quotes for text. Specify camera/lens for realism.",
@@ -54,6 +59,9 @@ export function ResultStep({
   imageCount,
   apiKey,
   onImageGenerated,
+  onGeneratedImagesChange,
+  onGeneratingPlatformsChange,
+  onGenerationErrorsChange,
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
@@ -61,7 +69,6 @@ export function ResultStep({
   const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]); 
   const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -100,6 +107,19 @@ export function ResultStep({
       }
     }
   }, []);
+
+  // Notify parent when state changes
+  useEffect(() => {
+    onGeneratedImagesChange?.(generatedImages);
+  }, [generatedImages, onGeneratedImagesChange]);
+
+  useEffect(() => {
+    onGeneratingPlatformsChange?.(generatingPlatforms);
+  }, [generatingPlatforms, onGeneratingPlatformsChange]);
+
+  useEffect(() => {
+    onGenerationErrorsChange?.(generationErrors);
+  }, [generationErrors, onGenerationErrorsChange]);
 
   const handlePlatformChange = (platform: PlatformKey) => {
     setSelectedPlatform(platform);
@@ -449,109 +469,6 @@ export function ResultStep({
         </div>
       </div>
 
-      {/* Generated Images Grid */}
-      {(generatedImages.length > 0 || isGenerating || Object.keys(generationErrors).length > 0) && (
-        <div className="border border-[var(--border-color)] p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              🎨 Generated Images
-              {generatedImages.length > 0 && (
-                <span className="text-[var(--text-muted)]">({generatedImages.length})</span>
-              )}
-              {isGenerating && (
-                <span className="text-[var(--accent-ai)] flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  {generatingCount} generating...
-                </span>
-              )}
-            </h3>
-            {generatedImages.length > 0 && (
-              <button
-                onClick={handleClearImages}
-                className={cn(
-                  "px-3 py-1 text-xs",
-                  "border border-[var(--border-color)]",
-                  "hover:bg-[var(--bg-secondary)] transition-colors"
-                )}
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-
-          {/* 2x2 Grid with Loading Placeholders */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Show loading placeholders for platforms being generated */}
-            {Array.from(generatingPlatforms).map((platform) => (
-              <div key={`loading-${platform}`} className="aspect-square border border-[var(--border-color)] bg-[var(--bg-secondary)] flex flex-col items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-ai)] mb-2" />
-                <p className="text-sm text-[var(--text-secondary)]">{PLATFORM_CONFIG[platform].label}</p>
-                <p className="text-xs text-[var(--text-muted)]">Generating...</p>
-              </div>
-            ))}
-            
-            {/* Show error placeholders */}
-            {Object.entries(generationErrors).map(([platform, error]) => (
-              <div key={`error-${platform}`} className="aspect-square border border-red-200 bg-red-50 flex flex-col items-center justify-center p-4">
-                <X className="w-8 h-8 text-red-400 mb-2" />
-                <p className="text-sm text-red-600">{PLATFORM_CONFIG[platform as PlatformKey].label}</p>
-                <p className="text-xs text-red-500 text-center mt-1">{error}</p>
-              </div>
-            ))}
-            
-            {/* Show generated images */}
-            {generatedImages.map((image, index) => (
-              <div key={image.timestamp} className="relative group">
-                <button
-                  onClick={() => setLightboxIndex(index)}
-                  className="w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)]"
-                  aria-label={`View ${PLATFORM_CONFIG[image.platform].label} image in lightbox`}
-                >
-                  <img
-                    src={image.url}
-                    alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
-                    className="w-full aspect-square object-cover border border-[var(--border-color)] cursor-pointer hover:opacity-90 transition-opacity"
-                  />
-                </button>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
-                  <span>{PLATFORM_CONFIG[image.platform].label}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(image);
-                    }}
-                    className="p-1 hover:bg-white/20 rounded"
-                    title="Download"
-                  >
-                    <Download className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {generatedImages.length === 0 && !isGenerating && Object.keys(generationErrors).length === 0 && (
-            <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No images generated yet. Add a subject and click Generate Images.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Lightbox */}
-      {lightboxIndex !== null && generatedImages.length > 0 && (
-        <Lightbox
-          images={generatedImages.map((img) => ({
-            url: img.url,
-            platform: img.platform,
-            label: PLATFORM_CONFIG[img.platform].label,
-          }))}
-          currentIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onNavigate={(index) => setLightboxIndex(index)}
-          onDownload={() => handleDownload(generatedImages[lightboxIndex])}
-        />
-      )}
     </div>
   );
 }
