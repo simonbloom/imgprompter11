@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Upload } from "lucide-react";
+import { Key, Upload, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
@@ -24,6 +24,7 @@ export function StyleExtractorWizard() {
   // Accordion states
   const [apiKeyOpen, setApiKeyOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(true);
+  const [stylePromptsOpen, setStylePromptsOpen] = useState(true);
 
   // Load API key from localStorage on mount
   useEffect(() => {
@@ -147,13 +148,22 @@ export function StyleExtractorWizard() {
         </div>
       )}
 
-      {/* Style Prompts Section - Always visible, not in accordion */}
+      {/* Style Prompts Section */}
       {prompts && (
-        <ResultStep
-          prompts={prompts}
-          imageCount={images.length}
-          apiKey={apiKey}
-        />
+        <Accordion
+          title="Style Prompts"
+          icon={<Sparkles className="w-4 h-4" />}
+          isOpen={stylePromptsOpen}
+          onToggle={() => setStylePromptsOpen(!stylePromptsOpen)}
+          isCompleted={true}
+          summary={`From ${images.length} image${images.length !== 1 ? "s" : ""}`}
+        >
+          <ResultStep
+            prompts={prompts}
+            imageCount={images.length}
+            apiKey={apiKey}
+          />
+        </Accordion>
       )}
     </div>
   );

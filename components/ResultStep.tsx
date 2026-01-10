@@ -270,17 +270,6 @@ export function ResultStep({
 
   return (
     <div className="space-y-6" role="region" aria-label="Style extraction result">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles aria-hidden="true" className="w-5 h-5 text-[var(--accent-gold)]" />
-          <h2 className="text-lg font-medium">Style Prompts</h2>
-        </div>
-        <span className="mono-tag" aria-label={`Generated from ${imageCount} image${imageCount !== 1 ? "s" : ""}`}>
-          From {imageCount} image{imageCount !== 1 ? "s" : ""}
-        </span>
-      </div>
-
       {/* Subject Input */}
       <div className="space-y-2">
         <label

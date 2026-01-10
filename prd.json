@@ -122,6 +122,24 @@
       "priority": 2,
       "passes": true,
       "notes": "Clear localStorage in handleExtract"
+    },
+    {
+      "id": "US-009",
+      "title": "Wrap Style Prompts in accordion (user-initiated only)",
+      "description": "As a user, I want the Style Prompts section in an accordion so I can collapse it when not needed, but it should NOT auto-collapse.",
+      "acceptanceCriteria": [
+        "Wrap entire Style Prompts section in Accordion component",
+        "Starts open by default",
+        "NO auto-collapse on any event",
+        "User can manually toggle open/close",
+        "Summary shows 'From X image(s)' when collapsed",
+        "Same styling as API Key and Upload accordions",
+        "Typecheck passes",
+        "Verify in browser using browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Wrapped ResultStep in Accordion, removed duplicate header from ResultStep"
     }
   ]
 }
