@@ -7,6 +7,12 @@ import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
 import { generateImage, type GeneratePlatform } from "@/utils/generateImageClient";
 
+interface GeneratedImage {
+  url: string;
+  platform: PlatformKey;
+  timestamp: number;
+}
+
 interface ResultStepProps {
   prompts: PlatformPrompts;
   imageCount: number;
@@ -51,9 +57,9 @@ export function ResultStep({
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
   const [editedPrompts, setEditedPrompts] = useState<Partial<Record<PlatformKey, string>>>({});
-  const [generatingPlatforms, setGeneratingPlatforms] = useState<Partial<Record<PlatformKey, boolean>>>({});
-  const [generatedImages, setGeneratedImages] = useState<Partial<Record<PlatformKey, string>>>({}); 
-  const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]); 
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -70,7 +76,22 @@ export function ResultStep({
       const saved = localStorage.getItem(GENERATED_IMAGES_KEY);
       if (saved) {
         try {
-          setGeneratedImages(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          // Handle both old format (object) and new format (array)
+          if (Array.isArray(parsed)) {
+            setGeneratedImages(parsed);
+          } else {
+            // Migrate old format to new format
+            const migrated: GeneratedImage[] = Object.entries(parsed)
+              .filter(([, url]) => url)
+              .map(([platform, url]) => ({
+                url: url as string,
+                platform: platform as PlatformKey,
+                timestamp: Date.now(),
+              }));
+            setGeneratedImages(migrated);
+            localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(migrated));
+          }
         } catch {
           // Invalid JSON, ignore
         }
@@ -82,11 +103,6 @@ export function ResultStep({
     setSelectedPlatform(platform);
     localStorage.setItem(STORAGE_KEY, platform);
   };
-
-  // Get generated image, error, and generating state for current platform
-  const currentGeneratedImage = generatedImages[selectedPlatform];
-  const currentGenerationError = generationErrors[selectedPlatform];
-  const isCurrentPlatformGenerating = generatingPlatforms[selectedPlatform] ?? false;
 
   const currentPrompt = prompts[selectedPlatform];
   const currentConfig = PLATFORM_CONFIG[selectedPlatform];
@@ -134,20 +150,11 @@ export function ResultStep({
   const canGenerateNow = hasSubject || hasEdits;
 
   const handleGenerate = async () => {
-    if (!canGenerate || !canGenerateNow || isCurrentPlatformGenerating) return;
+    if (!canGenerate || !canGenerateNow || isGenerating) return;
 
-    // Capture the platform we're generating for (in case user switches tabs)
     const platformToGenerate = selectedPlatform;
-
-    // Set generating state for THIS platform only
-    setGeneratingPlatforms((prev) => ({ ...prev, [platformToGenerate]: true }));
-    
-    // Clear any previous error for this platform
-    setGenerationErrors((prev) => {
-      const updated = { ...prev };
-      delete updated[platformToGenerate];
-      return updated;
-    });
+    setIsGenerating(true);
+    setGenerationError(null);
 
     try {
       const result = await generateImage({
@@ -157,9 +164,13 @@ export function ResultStep({
       });
 
       if (result.success && result.imageUrl) {
-        // Use functional update to avoid stale closure - always get latest state
+        const newImage: GeneratedImage = {
+          url: result.imageUrl,
+          platform: platformToGenerate,
+          timestamp: Date.now(),
+        };
         setGeneratedImages((prev) => {
-          const updated = { ...prev, [platformToGenerate]: result.imageUrl };
+          const updated = [...prev, newImage];
           localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
           return updated;
         });
@@ -167,34 +178,27 @@ export function ResultStep({
         onImageGenerated?.();
       } else {
         const errorMessage = result.error || "Failed to generate image";
-        setGenerationErrors((prev) => ({ ...prev, [platformToGenerate]: errorMessage }));
+        setGenerationError(errorMessage);
         toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Generation error:", error);
       const errorMessage = "Network error. Please check your connection and try again.";
-      setGenerationErrors((prev) => ({ ...prev, [platformToGenerate]: errorMessage }));
+      setGenerationError(errorMessage);
       toast.error(errorMessage);
     } finally {
-      // Clear generating state for THIS platform
-      setGeneratingPlatforms((prev) => {
-        const updated = { ...prev };
-        delete updated[platformToGenerate];
-        return updated;
-      });
+      setIsGenerating(false);
     }
   };
 
-  const handleDownload = async () => {
-    if (!currentGeneratedImage) return;
-
+  const handleDownload = async (image: GeneratedImage) => {
     try {
-      const response = await fetch(currentGeneratedImage);
+      const response = await fetch(image.url);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `generated-${selectedPlatform}-${Date.now()}.png`;
+      a.download = `generated-${image.platform}-${image.timestamp}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -203,6 +207,12 @@ export function ResultStep({
     } catch {
       toast.error("Failed to download image");
     }
+  };
+
+  const handleClearImages = () => {
+    setGeneratedImages([]);
+    localStorage.removeItem(GENERATED_IMAGES_KEY);
+    toast.success("Images cleared");
   };
 
   return (
@@ -351,11 +361,11 @@ export function ResultStep({
             {canGenerate && (
               <button
                 onClick={handleGenerate}
-                disabled={!canGenerateNow || isCurrentPlatformGenerating}
+                disabled={!canGenerateNow || isGenerating}
                 aria-label={
                   !canGenerateNow
                     ? "Add a subject or edit the prompt to generate an image"
-                    : isCurrentPlatformGenerating
+                    : isGenerating
                     ? "Generating image..."
                     : `Generate image with ${currentConfig.label}`
                 }
@@ -365,12 +375,12 @@ export function ResultStep({
                   "flex items-center gap-2 text-sm",
                   "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
                   "transition-colors",
-                  canGenerateNow && !isCurrentPlatformGenerating
+                  canGenerateNow && !isGenerating
                     ? "bg-[var(--accent-ai)] text-white hover:opacity-90"
                     : "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
                 )}
               >
-                {isCurrentPlatformGenerating ? (
+                {isGenerating ? (
                   <>
                     <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
                     Generating...
@@ -390,102 +400,6 @@ export function ResultStep({
               💰 Generating costs ~$0.02-0.04 per image (charged to your Replicate account)
             </p>
           )}
-
-          {/* Generated Image Display - Inside Tab */}
-          {canGenerate && (isCurrentPlatformGenerating || currentGeneratedImage || currentGenerationError) && (
-            <div className="mt-6 pt-6 border-t border-[var(--border-color)]">
-              <h3 className="text-sm font-medium mb-4">
-                {currentGenerationError
-                  ? "Generation Failed"
-                  : currentGeneratedImage 
-                    ? `Image generated by ${currentConfig.fullModelName}` 
-                    : `Generating with ${currentConfig.fullModelName}...`}
-              </h3>
-
-              {/* Loading State */}
-              {isCurrentPlatformGenerating && !currentGeneratedImage && !currentGenerationError && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-ai)] mb-4" />
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Generating with {currentConfig.fullModelName}...
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">
-                    This may take 5-15 seconds
-                  </p>
-                </div>
-              )}
-
-              {/* Error State */}
-              {currentGenerationError && !isCurrentPlatformGenerating && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-                    <X className="w-6 h-6 text-red-600" />
-                  </div>
-                  <p className="text-sm text-red-600 mb-2">{currentGenerationError}</p>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={!canGenerateNow}
-                    className={cn(
-                      "mt-2 px-4 py-2",
-                      "bg-[var(--accent-ai)] text-white",
-                      "hover:opacity-90 transition-colors",
-                      "flex items-center gap-2 text-sm",
-                      "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
-                      !canGenerateNow && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <RefreshCw aria-hidden="true" className="w-4 h-4" />
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              {/* Success State */}
-              {currentGeneratedImage && !currentGenerationError && (
-                <div className="space-y-4">
-                  <div className="flex justify-center">
-                    <img
-                      src={currentGeneratedImage}
-                      alt={`Generated image using ${currentConfig.fullModelName}`}
-                      className="max-w-full max-h-[500px] object-contain border border-[var(--border-color)]"
-                    />
-                  </div>
-
-                  <div className="flex justify-center gap-3">
-                    <button
-                      onClick={handleDownload}
-                      className={cn(
-                        "px-4 py-2",
-                        "border border-[var(--border-color)] bg-[var(--bg-primary)]",
-                        "hover:bg-[var(--bg-secondary)] transition-colors",
-                        "flex items-center gap-2 text-sm",
-                        "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2"
-                      )}
-                    >
-                      <Download aria-hidden="true" className="w-4 h-4" />
-                      Download
-                    </button>
-
-                    <button
-                      onClick={handleGenerate}
-                      disabled={isCurrentPlatformGenerating || !canGenerateNow}
-                      className={cn(
-                        "px-4 py-2",
-                        "border border-[var(--border-color)] bg-[var(--bg-primary)]",
-                        "hover:bg-[var(--bg-secondary)] transition-colors",
-                        "flex items-center gap-2 text-sm",
-                        "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
-                        (isCurrentPlatformGenerating || !canGenerateNow) && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      <RefreshCw aria-hidden="true" className={cn("w-4 h-4", isCurrentPlatformGenerating && "animate-spin")} />
-                      Regenerate
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Platform Tip */}
@@ -497,6 +411,90 @@ export function ResultStep({
         </div>
       </div>
 
+      {/* Generated Images Grid */}
+      {(generatedImages.length > 0 || isGenerating || generationError) && (
+        <div className="border border-[var(--border-color)] p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              🎨 Generated Images
+              {generatedImages.length > 0 && (
+                <span className="text-[var(--text-muted)]">({generatedImages.length})</span>
+              )}
+            </h3>
+            {generatedImages.length > 0 && (
+              <button
+                onClick={handleClearImages}
+                className={cn(
+                  "px-3 py-1 text-xs",
+                  "border border-[var(--border-color)]",
+                  "hover:bg-[var(--bg-secondary)] transition-colors"
+                )}
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+
+          {/* Loading State */}
+          {isGenerating && (
+            <div className="flex items-center gap-3 p-4 bg-[var(--bg-secondary)] mb-4">
+              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-ai)]" />
+              <div>
+                <p className="text-sm">Generating with {currentConfig.fullModelName}...</p>
+                <p className="text-xs text-[var(--text-muted)]">This may take 5-15 seconds</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {generationError && !isGenerating && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 mb-4">
+              <X className="w-5 h-5 text-red-600" />
+              <div>
+                <p className="text-sm text-red-600">{generationError}</p>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerateNow}
+                  className="text-xs text-red-700 underline mt-1"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2x2 Grid */}
+          {generatedImages.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              {generatedImages.map((image, index) => (
+                <div key={image.timestamp} className="relative group">
+                  <img
+                    src={image.url}
+                    alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
+                    className="w-full aspect-square object-cover border border-[var(--border-color)]"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
+                    <span>{PLATFORM_CONFIG[image.platform].label}</span>
+                    <button
+                      onClick={() => handleDownload(image)}
+                      className="p-1 hover:bg-white/20 rounded"
+                      title="Download"
+                    >
+                      <Download className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {generatedImages.length === 0 && !isGenerating && !generationError && (
+            <p className="text-sm text-[var(--text-muted)] text-center py-8">
+              No images generated yet. Add a subject and click Generate Image.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

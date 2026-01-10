@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Upload, ImageIcon } from "lucide-react";
+import { Key, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
 import { ResultStep } from "./ResultStep";
-import { GeneratedImageSection, useHasGeneratedImages } from "./GeneratedImageSection";
 import { Accordion } from "./ui/Accordion";
 import { uploadMultipleImages } from "@/utils/uploadImage";
 import { postStyleExtraction, type PlatformPrompts } from "@/utils/styleExtractionClient";
 
 const STORAGE_KEY = "imgprompter_replicate_api_key";
+const GENERATED_IMAGES_KEY = "imgprompter-generated-images";
 
 export function StyleExtractorWizard() {
   const [apiKey, setApiKey] = useState("");
@@ -24,10 +24,6 @@ export function StyleExtractorWizard() {
   // Accordion states
   const [apiKeyOpen, setApiKeyOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(true);
-  const [imageOpen, setImageOpen] = useState(true);
-
-  // Track generated images
-  const hasGeneratedImages = useHasGeneratedImages();
 
   // Load API key from localStorage on mount
   useEffect(() => {
@@ -67,6 +63,9 @@ export function StyleExtractorWizard() {
 
     setIsExtracting(true);
     setError(null);
+    
+    // Clear generated images when re-extracting
+    localStorage.removeItem(GENERATED_IMAGES_KEY);
 
     try {
       const uploadResult = await uploadMultipleImages(images.map((img) => img.file));
@@ -154,21 +153,7 @@ export function StyleExtractorWizard() {
           prompts={prompts}
           imageCount={images.length}
           apiKey={apiKey}
-          onImageGenerated={() => setImageOpen(true)}
         />
-      )}
-
-      {/* Generated Image Section */}
-      {prompts && (
-        <Accordion
-          title="Generated Image"
-          icon={<ImageIcon className="w-4 h-4" />}
-          isOpen={imageOpen}
-          onToggle={() => setImageOpen(!imageOpen)}
-          isCompleted={hasGeneratedImages}
-        >
-          <GeneratedImageSection />
-        </Accordion>
       )}
     </div>
   );

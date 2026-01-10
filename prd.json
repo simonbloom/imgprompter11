@@ -93,6 +93,35 @@
       "priority": 1,
       "passes": true,
       "notes": "Removed label from ApiKeyInput, removed Accordion from ResultStep"
+    },
+    {
+      "id": "US-007",
+      "title": "Unified image grid below tabs",
+      "description": "As a user, I want generated images to appear in a grid below the prompt tabs, not inside tabs, so images persist when switching tabs.",
+      "acceptanceCriteria": [
+        "Move generated image display from inside tabs to below tabs",
+        "Images stored as array with {url, platform, timestamp}",
+        "Images persist across tab switches",
+        "Display in 2x2 grid layout",
+        "Each image shows platform label",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Refactored image storage to array, moved grid below tabs"
+    },
+    {
+      "id": "US-008",
+      "title": "Clear images on re-extract",
+      "description": "As a user, I want generated images cleared when I re-extract style, so old images don't confuse me.",
+      "acceptanceCriteria": [
+        "Clear all generated images when Extract Style clicked",
+        "Clear images from localStorage too",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Clear localStorage in handleExtract"
     }
   ]
 }
