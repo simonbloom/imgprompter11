@@ -33,7 +33,7 @@ function getModelInput(platform: SupportedPlatform, prompt: string): Record<stri
     case "nano_banana":
       return {
         prompt,
-        aspect_ratio: "4:3",
+        aspect_ratio: "1:1",
         output_format: "png",
       };
     case "seedream":
