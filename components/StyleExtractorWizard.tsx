@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Upload, Sparkles, ImageIcon } from "lucide-react";
+import { Key, Upload, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
@@ -24,7 +24,6 @@ export function StyleExtractorWizard() {
   // Accordion states
   const [apiKeyOpen, setApiKeyOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(true);
-  const [promptsOpen, setPromptsOpen] = useState(true);
   const [imageOpen, setImageOpen] = useState(true);
 
   // Track generated images
@@ -149,25 +148,14 @@ export function StyleExtractorWizard() {
         </div>
       )}
 
-      {/* Style Prompts Section */}
+      {/* Style Prompts Section - Always visible, not in accordion */}
       {prompts && (
-        <Accordion
-          title="Style Prompts"
-          icon={<Sparkles className="w-4 h-4" />}
-          isOpen={promptsOpen}
-          onToggle={() => setPromptsOpen(!promptsOpen)}
-          isCompleted={hasGeneratedImages}
-        >
-          <ResultStep
-            prompts={prompts}
-            imageCount={images.length}
-            apiKey={apiKey}
-            onImageGenerated={() => {
-              setPromptsOpen(false);
-              setImageOpen(true);
-            }}
-          />
-        </Accordion>
+        <ResultStep
+          prompts={prompts}
+          imageCount={images.length}
+          apiKey={apiKey}
+          onImageGenerated={() => setImageOpen(true)}
+        />
       )}
 
       {/* Generated Image Section */}

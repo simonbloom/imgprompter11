@@ -44,11 +44,6 @@ export function ApiKeyInput({ apiKey, onApiKeyChange }: ApiKeyInputProps) {
 
   return (
     <div className="space-y-2">
-      <label className="mono-label flex items-center gap-2">
-        <Key className="w-3 h-3" />
-        Replicate API Key
-      </label>
-
       <div className="relative">
         <input
           type={showKey ? "text" : "password"}

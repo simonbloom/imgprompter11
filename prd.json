@@ -79,6 +79,20 @@
       "priority": 5,
       "passes": true,
       "notes": "Created GeneratedImageSection.tsx component"
+    },
+    {
+      "id": "US-006",
+      "title": "Fix duplicate headings in accordions",
+      "description": "As a user, I don't want to see duplicate labels/headings when sections are expanded.",
+      "acceptanceCriteria": [
+        "Remove duplicate 'REPLICATE API KEY' label from ApiKeyInput",
+        "Remove Accordion wrapper from Style Prompts (keep it always visible)",
+        "No duplicate headers shown in any section",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Removed label from ApiKeyInput, removed Accordion from ResultStep"
     }
   ]
 }
