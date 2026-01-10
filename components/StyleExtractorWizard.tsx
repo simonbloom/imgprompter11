@@ -278,27 +278,6 @@ export function StyleExtractorWizard() {
                 >
                   Clear All
                 </button>
-                <button
-                  onClick={handleDownloadAll}
-                  disabled={isDownloading || generatedImages.length === 0}
-                  className={cn(
-                    "px-3 py-1 text-xs",
-                    "border border-[var(--border-color)]",
-                    "transition-colors flex items-center gap-1",
-                    isDownloading || generatedImages.length === 0
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-[var(--bg-secondary)]"
-                  )}
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Preparing...
-                    </>
-                  ) : (
-                    "Download Style Pack"
-                  )}
-                </button>
               </div>
             )}
 
@@ -361,6 +340,38 @@ export function StyleExtractorWizard() {
             )}
           </div>
         </Accordion>
+      )}
+
+      {/* Download Style Pack Button */}
+      {generatedImages.length > 0 && (
+        <div className="flex justify-center">
+          <button
+            onClick={handleDownloadAll}
+            disabled={isDownloading}
+            className={cn(
+              "px-6 py-3",
+              "flex items-center justify-center gap-2",
+              "text-sm font-medium",
+              "focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)] focus:ring-offset-2",
+              "transition-colors",
+              isDownloading
+                ? "bg-[var(--bg-secondary)] text-[var(--text-muted)] cursor-not-allowed"
+                : "bg-[var(--accent-ai)] text-white hover:opacity-90"
+            )}
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Preparing...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download Style Pack
+              </>
+            )}
+          </button>
+        </div>
       )}
 
       {/* Lightbox */}
