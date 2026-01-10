@@ -1,0 +1,84 @@
+{
+  "project": "ImgPrompter Accordion UI",
+  "branchName": "ralph/accordion-ui",
+  "description": "Add progressive accordion UI that collapses completed sections as user moves through the workflow. Users can manually open/close any section at any time.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create reusable Accordion component",
+      "description": "As a developer, I need a reusable Accordion component that supports open/close toggle, completed state styling, and summary content when collapsed.",
+      "acceptanceCriteria": [
+        "Create components/ui/Accordion.tsx with AccordionItem subcomponent",
+        "Props: isOpen, onToggle, title, summary, isCompleted, children",
+        "Show checkmark icon when isCompleted=true",
+        "Show chevron toggle (> when collapsed, v when open)",
+        "Smooth height animation on open/close",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Created components/ui/Accordion.tsx"
+    },
+    {
+      "id": "US-002",
+      "title": "Wrap API Key section in accordion",
+      "description": "As a user, I want the API key section to collapse after I save my key so I can focus on the next step.",
+      "acceptanceCriteria": [
+        "Wrap ApiKeyInput in Accordion component",
+        "Auto-collapse when valid API key is entered (starts with 'r8_')",
+        "Show masked key in summary when collapsed (e.g., 'r8_xxx...xxx')",
+        "User can manually expand/collapse at any time",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented in StyleExtractorWizard.tsx"
+    },
+    {
+      "id": "US-003",
+      "title": "Wrap Upload section in accordion",
+      "description": "As a user, I want the upload section to collapse after style extraction so I can focus on the prompts.",
+      "acceptanceCriteria": [
+        "Wrap UploadStep content in Accordion component",
+        "Auto-collapse when prompts are successfully extracted",
+        "Show summary when collapsed: thumbnail, filename, subject if set",
+        "User can manually expand/collapse at any time",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented in StyleExtractorWizard.tsx"
+    },
+    {
+      "id": "US-004",
+      "title": "Wrap Style Prompt section in accordion",
+      "description": "As a user, I want the style prompt section to collapse after generating an image so I can focus on the result.",
+      "acceptanceCriteria": [
+        "Wrap ResultStep prompt area in Accordion component",
+        "Auto-collapse when image is successfully generated",
+        "Show summary when collapsed: platform name + truncated prompt",
+        "Generated image section remains visible below",
+        "User can manually expand/collapse at any time",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Implemented with onImageGenerated callback"
+    },
+    {
+      "id": "US-005",
+      "title": "Add Generated Image accordion section",
+      "description": "As a user, I want the generated image to be in its own section that expands when an image is ready.",
+      "acceptanceCriteria": [
+        "Create separate accordion section for generated image",
+        "Auto-expand when image generation completes",
+        "Show loading state during generation",
+        "Show thumbnail in summary when collapsed",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Created GeneratedImageSection.tsx component"
+    }
+  ]
+}

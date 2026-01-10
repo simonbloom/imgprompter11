@@ -11,6 +11,7 @@ interface ResultStepProps {
   prompts: PlatformPrompts;
   imageCount: number;
   apiKey: string;
+  onImageGenerated?: () => void;
 }
 
 const REPLICATE_SUPPORTED_PLATFORMS: PlatformKey[] = ["flux", "nano_banana", "seedream"];
@@ -45,6 +46,7 @@ export function ResultStep({
   prompts,
   imageCount,
   apiKey,
+  onImageGenerated,
 }: ResultStepProps) {
   const [copied, setCopied] = useState(false);
   const [subject, setSubject] = useState("");
@@ -162,6 +164,7 @@ export function ResultStep({
           return updated;
         });
         toast.success(`Image generated with ${PLATFORM_CONFIG[platformToGenerate].label}!`);
+        onImageGenerated?.();
       } else {
         const errorMessage = result.error || "Failed to generate image";
         setGenerationErrors((prev) => ({ ...prev, [platformToGenerate]: errorMessage }));

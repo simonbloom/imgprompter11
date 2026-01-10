@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Key, Upload, Sparkles, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { UploadStep, type UploadedImage } from "./UploadStep";
 import { ResultStep } from "./ResultStep";
+import { GeneratedImageSection, useHasGeneratedImages } from "./GeneratedImageSection";
+import { Accordion } from "./ui/Accordion";
 import { uploadMultipleImages } from "@/utils/uploadImage";
 import { postStyleExtraction, type PlatformPrompts } from "@/utils/styleExtractionClient";
 
@@ -18,15 +21,39 @@ export function StyleExtractorWizard() {
   const [error, setError] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
 
+  // Accordion states
+  const [apiKeyOpen, setApiKeyOpen] = useState(true);
+  const [uploadOpen, setUploadOpen] = useState(true);
+  const [promptsOpen, setPromptsOpen] = useState(true);
+  const [imageOpen, setImageOpen] = useState(true);
+
+  // Track generated images
+  const hasGeneratedImages = useHasGeneratedImages();
+
   // Load API key from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedKey = localStorage.getItem(STORAGE_KEY);
       if (savedKey) {
         setApiKey(savedKey);
+        setApiKeyOpen(false); // Auto-collapse if key already saved
       }
     }
   }, []);
+
+  // Auto-collapse API key section when valid key entered
+  useEffect(() => {
+    if (apiKey && apiKey.startsWith("r8_") && apiKey.length > 10) {
+      setApiKeyOpen(false);
+    }
+  }, [apiKey]);
+
+  // Auto-collapse upload section when prompts extracted
+  useEffect(() => {
+    if (prompts) {
+      setUploadOpen(false);
+    }
+  }, [prompts]);
 
   const handleExtract = async () => {
     if (!apiKey) {
@@ -43,14 +70,12 @@ export function StyleExtractorWizard() {
     setError(null);
 
     try {
-      // Upload images to Vercel Blob
       const uploadResult = await uploadMultipleImages(images.map((img) => img.file));
 
       if (!uploadResult.success || !uploadResult.urls) {
         throw new Error(uploadResult.errors?.join(", ") || "Failed to upload images");
       }
 
-      // Extract style using Claude
       const extractResult = await postStyleExtraction({
         imageUrls: uploadResult.urls,
         userGuidance: userGuidance || undefined,
@@ -74,27 +99,48 @@ export function StyleExtractorWizard() {
   };
 
   const isNextDisabled = images.length === 0 || !apiKey || isExtracting;
+  const hasValidApiKey = !!(apiKey && apiKey.startsWith("r8_") && apiKey.length > 10);
+  const maskedKey = apiKey ? `${apiKey.slice(0, 5)}...${apiKey.slice(-4)}` : "";
+
+  const uploadSummary = images.length > 0 
+    ? `${images.length} image${images.length !== 1 ? "s" : ""}${userGuidance ? " + notes" : ""}`
+    : undefined;
 
   return (
-    <div className="space-y-8">
-      {/* API Key Input - Always visible */}
-      <ApiKeyInput apiKey={apiKey} onApiKeyChange={setApiKey} />
+    <div className="space-y-4">
+      {/* API Key Section */}
+      <Accordion
+        title="Replicate API Key"
+        icon={<Key className="w-4 h-4" />}
+        isOpen={apiKeyOpen}
+        onToggle={() => setApiKeyOpen(!apiKeyOpen)}
+        isCompleted={hasValidApiKey}
+        summary={hasValidApiKey ? maskedKey : undefined}
+      >
+        <ApiKeyInput apiKey={apiKey} onApiKeyChange={setApiKey} />
+      </Accordion>
 
-      {/* Divider */}
-      <div className="border-t border-[var(--border-color)]" />
-
-      {/* Upload Section - Always visible */}
-      <UploadStep
-        images={images}
-        onImagesChange={setImages}
-        userGuidance={userGuidance}
-        onUserGuidanceChange={setUserGuidance}
-        onNext={handleExtract}
-        isNextDisabled={isNextDisabled}
-        apiKey={apiKey}
-        isExtracting={isExtracting}
-        hasResults={!!prompts}
-      />
+      {/* Upload Section */}
+      <Accordion
+        title="Upload Reference Image"
+        icon={<Upload className="w-4 h-4" />}
+        isOpen={uploadOpen}
+        onToggle={() => setUploadOpen(!uploadOpen)}
+        isCompleted={!!prompts}
+        summary={uploadSummary}
+      >
+        <UploadStep
+          images={images}
+          onImagesChange={setImages}
+          userGuidance={userGuidance}
+          onUserGuidanceChange={setUserGuidance}
+          onNext={handleExtract}
+          isNextDisabled={isNextDisabled}
+          apiKey={apiKey}
+          isExtracting={isExtracting}
+          hasResults={!!prompts}
+        />
+      </Accordion>
 
       {/* Error Display */}
       {error && (
@@ -103,13 +149,38 @@ export function StyleExtractorWizard() {
         </div>
       )}
 
-      {/* Results Section - Shown when prompts exist */}
+      {/* Style Prompts Section */}
       {prompts && (
-        <ResultStep
-          prompts={prompts}
-          imageCount={images.length}
-          apiKey={apiKey}
-        />
+        <Accordion
+          title="Style Prompts"
+          icon={<Sparkles className="w-4 h-4" />}
+          isOpen={promptsOpen}
+          onToggle={() => setPromptsOpen(!promptsOpen)}
+          isCompleted={hasGeneratedImages}
+        >
+          <ResultStep
+            prompts={prompts}
+            imageCount={images.length}
+            apiKey={apiKey}
+            onImageGenerated={() => {
+              setPromptsOpen(false);
+              setImageOpen(true);
+            }}
+          />
+        </Accordion>
+      )}
+
+      {/* Generated Image Section */}
+      {prompts && (
+        <Accordion
+          title="Generated Image"
+          icon={<ImageIcon className="w-4 h-4" />}
+          isOpen={imageOpen}
+          onToggle={() => setImageOpen(!imageOpen)}
+          isCompleted={hasGeneratedImages}
+        >
+          <GeneratedImageSection />
+        </Accordion>
       )}
     </div>
   );
