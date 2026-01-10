@@ -11,6 +11,7 @@ import { Accordion } from "./ui/Accordion";
 import { Lightbox } from "./ui/Lightbox";
 import { uploadMultipleImages } from "@/utils/uploadImage";
 import { postStyleExtraction, type PlatformPrompts, type PlatformKey } from "@/utils/styleExtractionClient";
+import { createExportZip } from "@/utils/downloadExport";
 
 const STORAGE_KEY = "imgprompter_replicate_api_key";
 const GENERATED_IMAGES_KEY = "imgprompter-generated-images";
@@ -121,8 +122,11 @@ export function StyleExtractorWizard() {
     
     setIsDownloading(true);
     try {
-      // TODO: Implement full export in US-013
-      toast.info("Download All - coming soon!");
+      await createExportZip({
+        prompts,
+        generatedImages,
+      });
+      toast.success("Download ready!");
     } catch (err) {
       console.error("Download error:", err);
       toast.error("Failed to create download");
