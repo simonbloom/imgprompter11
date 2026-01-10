@@ -135,8 +135,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, error: "Failed to generate image. Please try again." },
+      { success: false, error: `Failed to generate image: ${errorMessage}` },
       { status: 500 }
     );
   }
