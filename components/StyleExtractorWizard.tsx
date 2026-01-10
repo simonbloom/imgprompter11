@@ -125,6 +125,7 @@ export function StyleExtractorWizard() {
       await createExportZip({
         prompts,
         generatedImages,
+        sourceImageCount: images.length,
       });
       toast.success("Download ready!");
     } catch (err) {
