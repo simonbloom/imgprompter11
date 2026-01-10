@@ -80,7 +80,7 @@ export function Accordion({
           "overflow-hidden transition-all duration-200 ease-in-out"
         )}
       >
-        <div ref={contentRef} className="p-4 border-t border-[var(--border-color)]">
+        <div ref={contentRef} className="px-4 pt-4 pb-5 border-t border-[var(--border-color)]">
           {children}
         </div>
       </div>
