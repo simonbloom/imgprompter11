@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PlatformPrompts, PlatformKey } from "@/utils/styleExtractionClient";
 import { generateImage, type GeneratePlatform } from "@/utils/generateImageClient";
+import { Lightbox } from "./ui/Lightbox";
 
 interface GeneratedImage {
   url: string;
@@ -60,6 +61,7 @@ export function ResultStep({
   const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]); 
   const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -509,17 +511,26 @@ export function ResultStep({
             ))}
             
             {/* Show generated images */}
-            {generatedImages.map((image) => (
+            {generatedImages.map((image, index) => (
               <div key={image.timestamp} className="relative group">
-                <img
-                  src={image.url}
-                  alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
-                  className="w-full aspect-square object-cover border border-[var(--border-color)]"
-                />
+                <button
+                  onClick={() => setLightboxIndex(index)}
+                  className="w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent-ai)]"
+                  aria-label={`View ${PLATFORM_CONFIG[image.platform].label} image in lightbox`}
+                >
+                  <img
+                    src={image.url}
+                    alt={`Generated with ${PLATFORM_CONFIG[image.platform].label}`}
+                    className="w-full aspect-square object-cover border border-[var(--border-color)] cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                </button>
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs flex items-center justify-between">
                   <span>{PLATFORM_CONFIG[image.platform].label}</span>
                   <button
-                    onClick={() => handleDownload(image)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(image);
+                    }}
                     className="p-1 hover:bg-white/20 rounded"
                     title="Download"
                   >
@@ -536,6 +547,21 @@ export function ResultStep({
             </p>
           )}
         </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && generatedImages.length > 0 && (
+        <Lightbox
+          images={generatedImages.map((img) => ({
+            url: img.url,
+            platform: img.platform,
+            label: PLATFORM_CONFIG[img.platform].label,
+          }))}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={(index) => setLightboxIndex(index)}
+          onDownload={() => handleDownload(generatedImages[lightboxIndex])}
+        />
       )}
     </div>
   );
