@@ -80,8 +80,12 @@ export function StyleExtractorWizard() {
   }, []);
 
   // Callbacks to receive state from ResultStep
-  const handleGeneratedImagesChange = useCallback((images: GeneratedImage[]) => {
-    setGeneratedImages(images);
+  const handleAddImage = useCallback((image: GeneratedImage) => {
+    setGeneratedImages(prev => {
+      const updated = [...prev, image];
+      localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const handleGeneratingPlatformsChange = useCallback((platforms: Set<PlatformKey>) => {
@@ -151,6 +155,7 @@ export function StyleExtractorWizard() {
     setError(null);
     
     // Clear generated images when re-extracting
+    setGeneratedImages([]);
     localStorage.removeItem(GENERATED_IMAGES_KEY);
 
     try {
@@ -247,7 +252,8 @@ export function StyleExtractorWizard() {
             prompts={prompts}
             imageCount={images.length}
             apiKey={apiKey}
-            onGeneratedImagesChange={handleGeneratedImagesChange}
+            generatedImages={generatedImages}
+            onAddImage={handleAddImage}
             onGeneratingPlatformsChange={handleGeneratingPlatformsChange}
             onGenerationErrorsChange={handleGenerationErrorsChange}
           />

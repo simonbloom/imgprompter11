@@ -18,8 +18,9 @@ interface ResultStepProps {
   prompts: PlatformPrompts;
   imageCount: number;
   apiKey: string;
+  generatedImages: GeneratedImage[];
   onImageGenerated?: () => void;
-  onGeneratedImagesChange?: (images: GeneratedImage[]) => void;
+  onAddImage?: (image: GeneratedImage) => void;
   generatingPlatforms?: Set<PlatformKey>;
   onGeneratingPlatformsChange?: (platforms: Set<PlatformKey>) => void;
   generationErrors?: Partial<Record<PlatformKey, string>>;
@@ -53,14 +54,14 @@ export const PLATFORM_CONFIG: Record<PlatformKey, { label: string; tip: string; 
 
 const PLATFORM_ORDER: PlatformKey[] = ["gpt_image", "flux", "nano_banana", "seedream"];
 const STORAGE_KEY = "imgprompter-selected-platform";
-const GENERATED_IMAGES_KEY = "imgprompter-generated-images";
 
 export function ResultStep({
   prompts,
   imageCount,
   apiKey,
+  generatedImages,
   onImageGenerated,
-  onGeneratedImagesChange,
+  onAddImage,
   onGeneratingPlatformsChange,
   onGenerationErrorsChange,
 }: ResultStepProps) {
@@ -68,7 +69,6 @@ export function ResultStep({
   const [subject, setSubject] = useState("");
   const [editedPrompts, setEditedPrompts] = useState<Partial<Record<PlatformKey, string>>>({});
   const [generatingPlatforms, setGeneratingPlatforms] = useState<Set<PlatformKey>>(new Set());
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]); 
   const [generationErrors, setGenerationErrors] = useState<Partial<Record<PlatformKey, string>>>({});
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>(() => {
     if (typeof window !== "undefined") {
@@ -79,40 +79,6 @@ export function ResultStep({
     }
     return "gpt_image";
   });
-
-  // Load generated images from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(GENERATED_IMAGES_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Handle both old format (object) and new format (array)
-          if (Array.isArray(parsed)) {
-            setGeneratedImages(parsed);
-          } else {
-            // Migrate old format to new format
-            const migrated: GeneratedImage[] = Object.entries(parsed)
-              .filter(([, url]) => url)
-              .map(([platform, url]) => ({
-                url: url as string,
-                platform: platform as PlatformKey,
-                timestamp: Date.now(),
-              }));
-            setGeneratedImages(migrated);
-            localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(migrated));
-          }
-        } catch {
-          // Invalid JSON, ignore
-        }
-      }
-    }
-  }, []);
-
-  // Notify parent when state changes
-  useEffect(() => {
-    onGeneratedImagesChange?.(generatedImages);
-  }, [generatedImages, onGeneratedImagesChange]);
 
   useEffect(() => {
     onGeneratingPlatformsChange?.(generatingPlatforms);
@@ -244,11 +210,7 @@ export function ResultStep({
           platform,
           timestamp: Date.now(),
         };
-        setGeneratedImages((prev) => {
-          const updated = [...prev, newImage];
-          localStorage.setItem(GENERATED_IMAGES_KEY, JSON.stringify(updated));
-          return updated;
-        });
+        onAddImage?.(newImage);
         toast.success(`${PLATFORM_CONFIG[platform].label} image ready!`);
         onImageGenerated?.();
       } else {
@@ -263,30 +225,6 @@ export function ResultStep({
         return updated;
       });
     });
-  };
-
-  const handleDownload = async (image: GeneratedImage) => {
-    try {
-      const response = await fetch(image.url);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `generated-${image.platform}-${image.timestamp}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Image downloaded!");
-    } catch {
-      toast.error("Failed to download image");
-    }
-  };
-
-  const handleClearImages = () => {
-    setGeneratedImages([]);
-    localStorage.removeItem(GENERATED_IMAGES_KEY);
-    toast.success("Images cleared");
   };
 
   return (
