@@ -33,7 +33,7 @@ export function Accordion({
   }, [children]);
 
   return (
-    <div className="border border-[var(--border-color)]">
+    <div className="border-2 border-black rounded-[6px]">
       <button
         type="button"
         onClick={onToggle}
@@ -80,7 +80,7 @@ export function Accordion({
           "overflow-hidden transition-all duration-200 ease-in-out"
         )}
       >
-        <div ref={contentRef} className="px-4 pt-4 pb-5 border-t border-[var(--border-color)]">
+        <div ref={contentRef} className="px-4 pt-4 pb-5 border-t border-black">
           {children}
         </div>
       </div>
