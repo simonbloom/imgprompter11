@@ -1,5 +1,4 @@
 import JSZip from "jszip";
-import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import type { PlatformPrompts, PlatformKey } from "./styleExtractionClient";
 
@@ -229,6 +228,22 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+function saveBlobAs(blob: Blob, filename: string): void {
+  if (typeof window === "undefined") {
+    throw new Error("saveBlobAs can only run in the browser");
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  (document.body || document.documentElement).appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 export interface ExportOptions {
   prompts: PlatformPrompts;
   generatedImages: GeneratedImage[];
@@ -285,5 +300,5 @@ export async function createExportZip(options: ExportOptions): Promise<void> {
 
   // Generate and download ZIP
   const content = await zip.generateAsync({ type: "blob" });
-  saveAs(content, `style-prompts-${dateStr}.zip`);
+  saveBlobAs(content, `style-prompts-${dateStr}.zip`);
 }
